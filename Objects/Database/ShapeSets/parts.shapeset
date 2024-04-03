@@ -1,0 +1,30 @@
+{
+	"partList": [
+        {
+			"uuid": "2327aad6-0a6e-480e-9c73-c11c40dfaf37",
+			"name": "obj_interactive_ziplinePole",
+			"renderable": "$CONTENT_DATA/Objects/Renderables/obj_interactive_ziplinePole.rend",
+			"color": "ffcc4d",
+			"box": {
+				"x": 1,
+				"y": 1,
+				"z": 1
+			},
+			"scripted": {
+				"filename": "$CONTENT_DATA/Scripts/ZiplinePole.lua",
+				"classname": "ZiplinePole",
+				"data": {}
+			},
+			"rotationSet": "PropZ",
+			"sticky": "-Z",
+			"physicsMaterial": "Metal",
+			"ratings": {
+				"density": 6,
+				"durability": 10,
+				"friction": 8,
+				"buoyancy": 1
+			},
+			"flammable": false
+		}
+    ]
+}

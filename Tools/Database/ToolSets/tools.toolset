@@ -1,0 +1,15 @@
+{
+    "toolList": [
+        {
+            "name": "ZiplineGun",
+            "previewRenderable": "$GAME_DATA/Character/Char_Tools/char_spudgun_preview.rend",
+			"previewRotation": [ 1, 0, 0, 0, 0, -1, 0, 1, 0 ],
+            "script": {
+                "class": "ZiplineGun",
+                "data": {},
+                "file": "$CONTENT_DATA/Scripts/ZiplineGun.lua"
+            },
+            "uuid": "ae92e68a-af40-4ad9-9b4d-cb4eef9d0737"
+        }
+    ]
+}

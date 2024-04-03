@@ -1,0 +1,33 @@
+{
+    "lodList": [
+        {
+            "subMeshMap": {
+                "rod_base": {
+                    "material": "DifAsgNor",
+                    "textureList": [
+                        "$GAME_DATA/Textures/transparent.tga",
+                        "$GAME_DATA/Textures/transparent.tga",
+                        "$GAME_DATA/Textures/nonor_nor.tga"
+                    ]
+                },
+                "rod_glow": {
+                    "material": "DifAsgNor",
+                    "textureList": [
+                        "$CONTENT_DATA/Objects/Textures/green.png",
+                        "$CONTENT_DATA/Objects/Textures/fullblue.png",
+                        "$GAME_DATA/Textures/nonor_nor.tga"
+                    ]
+                },
+                "rod_grips": {
+                    "material": "DifAsgNor",
+                    "textureList": [
+                        "$CONTENT_DATA/Objects/Textures/lightergray.png",
+                        "$GAME_DATA/Textures/transparent.tga",
+                        "$GAME_DATA/Textures/nonor_nor.tga"
+                    ]
+                }
+            },
+            "mesh": "$CONTENT_DATA/Objects/Mesh/obj_interactive_ziplinePole.fbx"
+        }
+    ]
+}
