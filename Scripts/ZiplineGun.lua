@@ -585,8 +585,9 @@ function ZiplineGun:client_onEquippedUpdate( primaryState, secondaryState, f )
             if f ~= self.prevF then
                 if f then
                     self.attachedPole = shape
-                    sm.gui.displayAlertText("Attached to pole", 2.5)
-                end
+					--sm.gui.displayAlertText("Attached to pole", 2.5)
+					sm.audio.play("PaintTool - ColorPick")
+				end
 
                 self.prevF = f
             end
@@ -596,8 +597,9 @@ function ZiplineGun:client_onEquippedUpdate( primaryState, secondaryState, f )
         if f ~= self.prevF then
             if f then
                 self.attachedPole = nil
-                sm.gui.displayAlertText("Cleared pole", 2.5)
-            end
+				--sm.gui.displayAlertText("Cleared pole", 2.5)
+				sm.audio.play("PaintTool - ColorPick")
+			end
 
             self.prevF = f
         end

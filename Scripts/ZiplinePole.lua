@@ -105,7 +105,7 @@ function ZiplinePole:server_onFixedUpdate(dt)
     local zipDir = zipLine:normalize()
     local zipDir_noZ = sm.vec3.new(zipDir.x, zipDir.y, 0):normalize()
     for k, data in pairs(self.riders) do
-        data.acceleration = math.min(data.acceleration + dt, 1)
+        data.acceleration = math.min(data.acceleration + dt * ZIPLINEACCELERATIONRATE, 1)
 
         local char = data.char
         if not sm.exists(char) then

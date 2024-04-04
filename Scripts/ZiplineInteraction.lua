@@ -48,7 +48,7 @@ function ZiplineInteraction:client_onUpdate()
     if lock and lock ~= self.lockingPole then return end
 
     local start = sm.localPlayer.getRaycastStart()
-    local hit, result = sm.physics.spherecast(start, start + sm.localPlayer.getDirection() * 3, 0.15, nil, 8)
+    local hit, result = sm.physics.spherecast(start, start + sm.localPlayer.getDirection() * 5, 0.15, nil, 8)
 
     if hit then
         sm.gui.setInteractionText("", sm.gui.getKeyBinding("Use", true), "#{INTERACTION_USE}")
