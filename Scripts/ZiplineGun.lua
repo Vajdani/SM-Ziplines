@@ -144,8 +144,8 @@ function ZiplineGun:loadAnimations()
 end
 
 local isSprintAnim = {
-    ssprintInto = true,
-    printIdle   = true
+    sprintInto = true,
+    sprintIdle = true
 }
 
 local isAimAnim = {
@@ -153,8 +153,6 @@ local isAimAnim = {
     aimIdle  = true,
     aimShoot = true
 }
-
-local vec3_up = sm.vec3.new( 0, 0, 1 )
 
 function ZiplineGun:client_onUpdate( dt )
 	local isSprinting =  self.tool:isSprinting()
@@ -313,6 +311,20 @@ function ZiplineGun:client_onUpdate( dt )
 	local finalAngle = ( 0.5 + angle * 0.5 )
 	self.tool:updateAnimation( "spudgun_spine_bend", finalAngle, self.spineWeight )
 
+    local totalOffsetZ = lerp( -22.0, -26.0, crouchWeight )
+	local totalOffsetY = lerp( 6.0, 12.0, crouchWeight )
+	local crouchTotalOffsetX = clamp( ( angle * 60.0 ) -15.0, -60.0, 40.0 )
+	local normalTotalOffsetX = clamp( ( angle * 50.0 ), -45.0, 50.0 )
+	local totalOffsetX = lerp( normalTotalOffsetX, crouchTotalOffsetX , crouchWeight )
+	local finalJointWeight = ( self.jointWeight )
+	self.tool:updateJoint( "jnt_hips", sm.vec3.new( totalOffsetX, totalOffsetY, totalOffsetZ ), 0.35 * finalJointWeight * ( normalWeight ) )
+
+	local crouchSpineWeight = ( 0.35 / 3 ) * crouchWeight
+	self.tool:updateJoint( "jnt_spine1", sm.vec3.new( totalOffsetX, totalOffsetY, totalOffsetZ ), ( 0.10 + crouchSpineWeight )  * finalJointWeight )
+	self.tool:updateJoint( "jnt_spine2", sm.vec3.new( totalOffsetX, totalOffsetY, totalOffsetZ ), ( 0.10 + crouchSpineWeight ) * finalJointWeight )
+	self.tool:updateJoint( "jnt_spine3", sm.vec3.new( totalOffsetX, totalOffsetY, totalOffsetZ ), ( 0.45 + crouchSpineWeight ) * finalJointWeight )
+	self.tool:updateJoint( "jnt_head", sm.vec3.new( totalOffsetX, totalOffsetY, totalOffsetZ ), 0.3 * finalJointWeight )
+
 	local bobbing = 1
     local blend = 1 - math.pow( 1 - 1 / self.aimBlendSpeed, dt * 60 )
 	if self.aiming then
@@ -397,8 +409,84 @@ function ZiplineGun:onAim( aiming )
 	end
 end
 
-function ZiplineGun:sv_n_onShoot()
+function ZiplineGun:getBlockPos(result)
+    local groundPointOffset = -( sm.construction.constants.subdivideRatio_2 - 0.04 + sm.construction.constants.shapeSpacing + 0.005 )
+    local pointLocal = result.pointLocal
+    if result.type ~= "body" and result.type ~= "joint" then
+        pointLocal = pointLocal + result.normalLocal * groundPointOffset
+    end
+
+    local n = sm.vec3.closestAxis( result.normalLocal )
+    local a = pointLocal * sm.construction.constants.subdivisions - n * 0.5
+    local gridPos = sm.vec3.new( math.floor( a.x ), math.floor( a.y ), math.floor( a.z ) ) + n
+
+    return gridPos, result.normalLocal
+end
+
+local function calculateRightVector(vector)
+    local yaw = math.atan2(vector.y, vector.x) - math.pi / 2
+    return sm.vec3.new(math.cos(yaw), math.sin(yaw), 0)
+end
+
+local function calculateUpVector(vector)
+    return calculateRightVector(vector):cross(vector)
+end
+
+function ZiplineGun:sv_n_onShoot(args)
+    local start = args.start
+    local hit, result = sm.physics.raycast(start, start + args.dir * MAXZIPLINELENGTH, nil, ZIPLINESHOOTFILTER)
+
+    local _type = result.type
+    if _type == "unknown" then
+        print("didnt hit anything valid")
+        return
+    end
+
+    local char = self.tool:getOwner().character
+    local charPos = char.worldPosition
+    local groundHit, resultGround = sm.physics.raycast(charPos, charPos - char:getSurfaceNormal() * 2.5, nil, ZIPLINESHOOTFILTER)
+
+    local preset = args.attachedPole
+    local parent = preset or self:sv_createPole(resultGround)
+    if not parent then return end
+
+    if preset then
+        sm.event.sendToInteractable(preset.interactable, "sv_updateTarget", self:sv_createPole(result))
+    else
+        parent.interactable.publicData = { target = self:sv_createPole(result) }
+    end
+
 	self.network:sendToClients( "cl_n_onShoot" )
+end
+
+---@param result RaycastResult
+function ZiplineGun:sv_createPole(result)
+    local pole
+    if result.type == "body" then
+        print("body")
+        local shape = result:getShape()
+        if not shape.isBlock then
+            print("not block, abort")
+            return
+        end
+
+        local gridPos, normal = self:getBlockPos(result)
+        local rot = shape.localRotation
+        pole = shape.body:createPart(ZIPLINEPOLE, gridPos, normal, rot * vec3_right)
+
+        --local localRot = shape.localRotation
+        --local normal = result.normalLocal
+        --shape.body:createPart(ZIPLINEPOLE, shape:getClosestBlockLocalPosition(result.pointWorld), normal, localRot * vec3_right)
+    else
+        print("terrain")
+
+        --local gridPos, normal = self:getBlockPos(result)
+        --gridPos = gridPos * 0.25
+        local gridPos, normal = result.pointWorld, result.normalWorld
+        pole = sm.shape.createPart(ZIPLINEPOLE, gridPos - normal * 0.15, sm.vec3.getRotation(vec3_up, normal), false, true)
+    end
+
+    return pole
 end
 
 function ZiplineGun:cl_n_onShoot()
@@ -421,53 +509,20 @@ function ZiplineGun:onShoot()
 end
 
 function ZiplineGun:cl_onPrimaryUse( state )
-	if self.fireCooldownTimer > 0.0 or state ~= 1 then return end
+	if self.fireCooldownTimer > 0.0 or state ~= 1 or not self.tool:getOwner().character:isOnGround() then return end
 
-    if not sm.game.getEnableAmmoConsumption() or sm.container.canSpend( sm.localPlayer.getInventory(), obj_plantables_potato, 1 ) then
-        local firstPerson = self.tool:isInFirstPersonView()
-        local dir = sm.localPlayer.getDirection()
-        local firePos = self:calculateFirePosition()
-        local fakePosition = self:calculateTpMuzzlePos()
-        local fakePositionSelf = fakePosition
-        if firstPerson then
-            fakePositionSelf = self:calculateFpMuzzlePos()
-        end
-
-        if not firstPerson then
-            local raycastPos = sm.camera.getPosition() + sm.camera.getDirection() * sm.camera.getDirection():dot( GetOwnerPosition( self.tool ) - sm.camera.getPosition() )
-            local hit, result = sm.localPlayer.getRaycast( 250, raycastPos, sm.camera.getDirection() )
-            if hit then
-                local norDir = sm.vec3.normalize( result.pointWorld - firePos )
-                local dirDot = norDir:dot( dir )
-
-                if dirDot > 0.96592583 then
-                    dir = norDir
-                else
-                    local radsOff = math.asin( dirDot )
-                    dir = sm.vec3.lerp( dir, norDir, math.tan( radsOff ) / 3.7320508 )
-                end
-            end
-        end
-
-        dir = dir:rotate( math.rad( 0.955 ), sm.camera.getRight() )
-
+    if not sm.game.getEnableAmmoConsumption() or sm.container.canSpend( sm.localPlayer.getInventory(), ZIPLINEPOLE, self.attachedPole and 1 or 2 ) then
         local fireMode = self.aiming and self.aimFireMode or self.normalFireMode
-        local recoilDispersion = 1.0 - ( math.max(fireMode.minDispersionCrouching, fireMode.minDispersionStanding ) + fireMode.maxMovementDispersion )
-
-        local spreadFactor = fireMode.spreadCooldown > 0.0 and clamp( self.spreadCooldownTimer / fireMode.spreadCooldown, 0.0, 1.0 ) or 0.0
-        spreadFactor = clamp( self.movementDispersion + spreadFactor * recoilDispersion, 0.0, 1.0 )
-        local spreadDeg =  fireMode.spreadMinAngle + ( fireMode.spreadMaxAngle - fireMode.spreadMinAngle ) * spreadFactor
-
-        sm.projectile.projectileAttack( projectile_potato, Damage, firePos, sm.noise.gunSpread( dir, spreadDeg ) * fireMode.fireVelocity, self.tool:getOwner(), fakePosition, fakePositionSelf )
-
         self.fireCooldownTimer = fireMode.fireCooldown
         self.spreadCooldownTimer = math.min( self.spreadCooldownTimer + fireMode.spreadIncrement, fireMode.spreadCooldown )
         self.sprintCooldownTimer = self.sprintCooldown
 
         self:onShoot()
-        self.network:sendToServer( "sv_n_onShoot" )
+        self.network:sendToServer( "sv_n_onShoot", { start = sm.localPlayer.getRaycastStart(), attachedPole = self.attachedPole, dir = sm.localPlayer.getDirection() } )
 
         setFpAnimation( self.fpAnimations, self.aiming and "aimShoot" or "shoot", 0.05 )
+
+        self.attachedPole = nil
     else
         local fireMode = self.aiming and self.aimFireMode or self.normalFireMode
         self.fireCooldownTimer = fireMode.fireCooldown
@@ -487,9 +542,33 @@ function ZiplineGun:cl_onSecondaryUse( state )
     end
 end
 
-function ZiplineGun:client_onEquippedUpdate( primaryState, secondaryState )
-	if primaryState ~= self.prevPrimaryState then
-		self:cl_onPrimaryUse( primaryState )
+function ZiplineGun:client_onEquippedUpdate( primaryState, secondaryState, f )
+    if not sm.exists(self.attachedPole) then
+        self.attachedPole = nil
+    end
+
+    local hit, result = sm.localPlayer.getRaycast(MAXZIPLINELENGTH)
+    local toPole = self.attachedPole and (result.pointWorld - GetPoleEnd(self.attachedPole))
+    local distance = self.attachedPole and math.min(toPole:length(), MAXZIPLINELENGTH) or MAXZIPLINELENGTH * result.fraction
+    local isInRange = distance < MAXZIPLINELENGTH
+
+    local dir = self.attachedPole and toPole:normalize() or sm.localPlayer.getDirection()
+    local isInAngleRange, angle = IsSmallerAngle(dir, MAXZIPLINEANGLE)
+    sm.gui.displayAlertText(
+        ("%s%.0fm\n#ffffffAngle: %s%.0f"):format(
+            isInRange and "#ffffff" or "#ff0000",
+            distance,
+            isInAngleRange and "#00ff00" or "#ff0000",
+            angle * (dir.z < 0 and -1 or 1)
+        ),
+        1
+    )
+
+    if primaryState ~= self.prevPrimaryState then
+		if hit and isInRange and isInAngleRange then
+            self:cl_onPrimaryUse( primaryState )
+        end
+
 		self.prevPrimaryState = primaryState
 	end
 
@@ -497,6 +576,32 @@ function ZiplineGun:client_onEquippedUpdate( primaryState, secondaryState )
 		self:cl_onSecondaryUse( secondaryState )
 		self.prevSecondaryState = secondaryState
 	end
+
+
+    if not self.attachedPole then
+        local shape = result:getShape()
+        if shape and shape.uuid == ZIPLINEPOLE then
+            sm.gui.setInteractionText("", sm.gui.getKeyBinding("ForceBuild", true), "Attach rope to pole")
+            if f ~= self.prevF then
+                if f then
+                    self.attachedPole = shape
+                    sm.gui.displayAlertText("Attached to pole", 2.5)
+                end
+
+                self.prevF = f
+            end
+        end
+    else
+        sm.gui.setInteractionText("", sm.gui.getKeyBinding("ForceBuild", true), "Clear attached pole")
+        if f ~= self.prevF then
+            if f then
+                self.attachedPole = nil
+                sm.gui.displayAlertText("Cleared pole", 2.5)
+            end
+
+            self.prevF = f
+        end
+    end
 
 	return true, true
 end
