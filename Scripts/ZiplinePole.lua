@@ -81,10 +81,27 @@ function ZiplinePole:server_onDestroy()
     self:sv_freeRiders()
 end
 
+function ZiplinePole:sv_checkIfCanConnect(pole, dt)
+    local startPos = GetPoleEnd(self.shape, dt)
+    local targetPos = GetPoleEnd(pole, dt)
+    local zipLine = targetPos - startPos
+    local ziplineLength = zipLine:length()
+    local zipDir = zipLine:normalize()
+    local zipDir_noZ = sm.vec3.new(zipDir.x, zipDir.y, 0):normalize()
+    if ziplineLength > MAXZIPLINELENGTH or sm.physics.raycast(startPos, targetPos, nil, ZIPLINECLEARENCEFILTER) or not IsSmallerAngle(zipDir, MAXZIPLINEANGLE, zipDir_noZ) then
+        return false, zipDir, zipDir_noZ, ziplineLength, startPos, targetPos
+    end
+
+    return true, zipDir, zipDir_noZ, ziplineLength, startPos, targetPos
+end
+
 function ZiplinePole:server_onFixedUpdate(dt)
     local child = self.interactable:getChildren()[1]
     if child and not self.sv_targetPole then
-        self:sv_updateTarget(child.shape)
+        local shape = child.shape
+        if self:sv_checkIfCanConnect(shape, dt) then
+            self:sv_updateTarget(shape)
+        end
     end
 
     if not self.sv_targetPole then return end
@@ -95,17 +112,12 @@ function ZiplinePole:server_onFixedUpdate(dt)
         return
     end
 
-    local startPos = GetPoleEnd(self.shape, dt)
-    local targetPos = GetPoleEnd(self.sv_targetPole, dt)
-    local zipLine = targetPos - startPos
-    local zipLineLength = zipLine:length()
-
-    if zipLineLength > MAXZIPLINELENGTH or sm.physics.raycast(startPos, targetPos, nil, ZIPLINECLEARENCEFILTER) then
+    local succes, zipDir, zipDir_noZ, ziplineLength, startPos, targetPos  = self:sv_checkIfCanConnect(self.sv_targetPole, dt)
+    if not succes then
         self:sv_updateTarget(nil)
+        return
     end
 
-    local zipDir = zipLine:normalize()
-    local zipDir_noZ = sm.vec3.new(zipDir.x, zipDir.y, 0):normalize()
     for k, data in pairs(self.riders) do
         data.acceleration = math.min(data.acceleration + dt * ZIPLINEACCELERATIONRATE, 1)
 
@@ -130,9 +142,9 @@ function ZiplinePole:server_onFixedUpdate(dt)
         end
 
         if isReverse then
-            data.progress = math.max(data.progress - dt * ziplineSpeed * data.acceleration / zipLineLength, 0)
+            data.progress = math.max(data.progress - dt * ziplineSpeed * data.acceleration / ziplineLength, 0)
         else
-            data.progress = math.min(data.progress + dt * ziplineSpeed * data.acceleration / zipLineLength, 1)
+            data.progress = math.min(data.progress + dt * ziplineSpeed * data.acceleration / ziplineLength, 1)
         end
 
         local pos = sm.vec3.lerp(startPos, targetPos, sm.util.clamp(data.progress, 0.01, 0.99)) - vec3_up * 0.75

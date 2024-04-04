@@ -51,9 +51,8 @@ function CanPlayerBoost(zipDir, isReverse, playerDir)
     return zipDir.z < 0 and dot > boostAngle and not isReverse or zipDir.z > 0 and dot < -boostAngle and isReverse
 end
 
-function IsSmallerAngle(dir, angle)
-    local dir_noZ = sm.vec3.new(dir.x, dir.y, 0):normalize()
-    local dirAngle = math.deg(math.acos(dir_noZ:dot(dir)))
+function IsSmallerAngle(dir, angle, noZ)
+    local dirAngle = math.deg(math.acos((noZ or sm.vec3.new(dir.x, dir.y, 0):normalize()):dot(dir)))
     dirAngle = dirAngle == dirAngle and dirAngle or 0 --NaN protection
     return dirAngle < angle, dirAngle
 end
