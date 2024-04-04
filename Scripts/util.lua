@@ -54,6 +54,7 @@ end
 function IsSmallerAngle(dir, angle)
     local dir_noZ = sm.vec3.new(dir.x, dir.y, 0):normalize()
     local dirAngle = math.deg(math.acos(dir_noZ:dot(dir)))
+    dirAngle = dirAngle == dirAngle and dirAngle or 0 --NaN protection
     return dirAngle < angle, dirAngle
 end
 
@@ -78,4 +79,11 @@ end
 
 function BoolToNum(bool)
     return bool and 1 or 0
+end
+
+function ColourLerp(c1, c2, t)
+	local r = sm.util.lerp(c1.r, c2.r, t)
+	local g = sm.util.lerp(c1.g, c2.g, t)
+	local b = sm.util.lerp(c1.b, c2.b, t)
+	return sm.color.new(r,g,b)
 end

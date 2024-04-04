@@ -257,6 +257,18 @@ function ZiplinePole:client_onClientDataUpdate(data, channel)
     end
 end
 
+local text = "<p textShadow='false' bg='gui_keybinds_bg_orange' color='#66440C' spacing='9'>#%s%.1fm</p>"
+local col_safe = sm.color.new("#00ff00")
+local col_danger = sm.color.new("#ff0000")
+function ZiplinePole:client_canInteract()
+    if self.cl_targetPole then
+        local distance = (GetPoleEnd(self.shape) - GetPoleEnd(self.cl_targetPole)):length()
+        sm.gui.setInteractionText(text:format(ColourLerp(col_safe, col_danger, distance / MAXZIPLINELENGTH):getHexStr():sub(1, 6), distance))
+    end
+
+    return false
+end
+
 local isBlockedAction = {
     [1]  = true,
     [2]  = true,
