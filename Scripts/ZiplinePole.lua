@@ -128,7 +128,7 @@ function ZiplinePole:server_onFixedUpdate(dt)
             data.progress = math.min(data.progress + dt * ziplineSpeed * data.acceleration / zipLineLength, 1)
         end
 
-        local pos = sm.vec3.lerp(startPos, targetPos, sm.util.clamp(data.progress, 0.0025, 0.99725)) - vec3_up * 0.75
+        local pos = sm.vec3.lerp(startPos, targetPos, sm.util.clamp(data.progress, 0.01, 0.99)) - vec3_up * 0.75
         sm.physics.applyImpulse(char, ((pos - char.worldPosition) * 2 - ( char.velocity * 0.3 )) * char.mass)
 
         ::continue::
@@ -160,32 +160,33 @@ end
 ---@param caller Player
 function ZiplinePole:sv_toggleAttachment(args, caller)
     local pId = caller.id
+    local char = caller.character
     if self.riders[pId] then
         self:sv_freeRider(pId)
-        return
+    else
+        local progress, zipDir = CalculateZiplineProgress(char.worldPosition, GetPoleEnd(self.shape), GetPoleEnd(self.sv_targetPole))
+        local isReverse =  zipDir:dot(char.direction) < 0
+        self.riders[pId] = {
+            progress = progress,
+            acceleration = 0,
+            isReverse = isReverse,
+            char = char
+        }
+
+        sm.event.sendToTool(
+            g_ziplineInteraction, "sv_setZiplineState",
+            {
+                player = caller,
+                state = true,
+                data = {
+                    zipDir = zipDir,
+                    isReverse = isReverse
+                }
+            }
+        )
     end
 
-    local char = caller.character
-    local progress, zipDir = CalculateZiplineProgress(char.worldPosition, GetPoleEnd(self.shape), GetPoleEnd(self.sv_targetPole))
-    local isReverse =  zipDir:dot(char.direction) < 0
-    self.riders[pId] = {
-        progress = progress,
-        acceleration = 0,
-        isReverse = isReverse,
-        char = char
-    }
-
-    sm.event.sendToTool(
-        g_ziplineInteraction, "sv_setZiplineState",
-        {
-            player = caller,
-            state = true,
-            data = {
-                zipDir = zipDir,
-                isReverse = isReverse
-            }
-        }
-    )
+    sm.effect.playEffect("Zipline - Attach", char.worldPosition)
 end
 
 ---@param caller Player
@@ -196,6 +197,7 @@ function ZiplinePole:sv_toggleIsReverse(args, caller)
     self.riders[pId].acceleration = 0
 
     sm.event.sendToTool(g_ziplineInteraction, "sv_setZiplineData", { player = caller, data = { isReverse = new } })
+    sm.effect.playEffect("Zipline - Attach", caller.character.worldPosition)
 end
 
 

@@ -1,0 +1,14 @@
+{
+	"Zipline - Attach":
+	{
+		"effectList":
+		[
+			{
+				"type": "audio",
+				"name": "event:/tools/weldtool/wt_sparks",
+				"attached": true,
+				"delay": 0.0
+			}
+		]
+	}
+}
