@@ -1,6 +1,7 @@
 vec3_up      = sm.vec3.new(0,0,1)
 vec3_right   = sm.vec3.new(1,0,0)
 vec3_forward = sm.vec3.new(1,0,0)
+vec3_zero    = sm.vec3.zero()
 
 MAXZIPLINELENGTH = 50
 MAXZIPLINEANGLE = 30
@@ -8,7 +9,7 @@ MAXZIPLINEANGLE_RAD = math.rad(MAXZIPLINEANGLE)
 BASEZIPLINESPEED = 5
 DOWNHILLMULTIPLIER = 1
 UPHILLMULTIPLIER = -0.5
-BOOSTMULTIPLIER = 0.25
+BOOSTMULTIPLIER = 1.5
 
 ZIPLINEPOLE = sm.uuid.new("2327aad6-0a6e-480e-9c73-c11c40dfaf37")
 ZIPLINESHOOTFILTER = sm.physics.filter.dynamicBody + sm.physics.filter.staticBody + sm.physics.filter.terrainAsset + sm.physics.filter.terrainSurface
@@ -60,5 +61,21 @@ end
 ---@param dt? number
 ---@return Vec3
 function GetPoleEnd(pole, dt)
+    if not pole or not sm.exists(pole) then
+        return vec3_zero
+    end
+
     return pole:getInterpolatedWorldPosition() + pole.velocity * (dt or 0) + pole:getInterpolatedUp() * 1.75
+end
+
+---@param ignore? AreaTrigger
+---@return boolean, AreaTrigger
+function DoZiplineInteractionRaycast(ignore)
+    local start = sm.localPlayer.getRaycastStart()
+    local hit, result = sm.physics.raycast(start, start + sm.localPlayer.getDirection() * 5, ignore, 8) --sm.physics.spherecast(start, start + sm.localPlayer.getDirection() * 5, 0.15, nil, 8)
+    return hit, result:getAreaTrigger()
+end
+
+function BoolToNum(bool)
+    return bool and 1 or 0
 end

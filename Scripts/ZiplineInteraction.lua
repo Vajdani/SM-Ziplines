@@ -26,35 +26,29 @@ end
 function ZiplineInteraction:client_onUpdate()
     local char = sm.localPlayer.getPlayer().character
     local cPub = char.clientPublicData
-    if cPub and cPub.isRidingZipline then
+    local isRidingZipline = cPub and cPub.isRidingZipline
+    if isRidingZipline then
+        local interText = sm.gui.getKeyBinding("Jump", true).."Dismount\t"
         if CanInteract() then
-            sm.gui.setInteractionText(
-                sm.gui.getKeyBinding("Jump", true).."Dismount\t",
-                sm.gui.getKeyBinding("Use", true).."Reverse direction\t",
-                ""
-            )
-        else
-            sm.gui.setInteractionText(sm.gui.getKeyBinding("Jump", true), "Dismount\t", "")
+            interText = interText..sm.gui.getKeyBinding("Use", true).."Reverse direction\t"
         end
 
-        if CanPlayerBoost(cPub.zipDir, cPub.isReverse, sm.localPlayer.getDirection()) then
-            sm.gui.setInteractionText("", sm.gui.getKeyBinding("Forward", true), "Slide")
+        if CanPlayerBoost(cPub.zipDir, cPub.isReverse, sm.localPlayer.getDirection()) and char.velocity:length2() > 1 then
+            interText = interText..sm.gui.getKeyBinding("Forward", true).."Slide"
         end
 
-        return
+        sm.gui.setInteractionText(interText, "")
+        --return
     end
 
-    local lock = char:getLockingInteractable()
-    if lock and lock ~= self.lockingPole then return end
-
-    local start = sm.localPlayer.getRaycastStart()
-    local hit, result = sm.physics.spherecast(start, start + sm.localPlayer.getDirection() * 5, 0.15, nil, 8)
-
+    local hit, pole = DoZiplineInteractionRaycast(isRidingZipline and self.poleTrigger)
     if hit then
         sm.gui.setInteractionText("", sm.gui.getKeyBinding("Use", true), "#{INTERACTION_USE}")
     end
 
-    local pole = result:getAreaTrigger()
+    local lock = char:getLockingInteractable()
+    if lock and lock ~= self.lockingPole or isRidingZipline then return end
+
     if self.poleTrigger ~= pole then
         if pole then
             local lockingPole = pole:getUserData().pole.interactable
@@ -62,6 +56,7 @@ function ZiplineInteraction:client_onUpdate()
             self.lockingPole = lockingPole
         else
             char:setLockingInteractable(nil)
+            self.lockingPole = nil
         end
 
         self.poleTrigger = pole

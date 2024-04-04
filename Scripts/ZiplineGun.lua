@@ -409,29 +409,6 @@ function ZiplineGun:onAim( aiming )
 	end
 end
 
-function ZiplineGun:getBlockPos(result)
-    local groundPointOffset = -( sm.construction.constants.subdivideRatio_2 - 0.04 + sm.construction.constants.shapeSpacing + 0.005 )
-    local pointLocal = result.pointLocal
-    if result.type ~= "body" and result.type ~= "joint" then
-        pointLocal = pointLocal + result.normalLocal * groundPointOffset
-    end
-
-    local n = sm.vec3.closestAxis( result.normalLocal )
-    local a = pointLocal * sm.construction.constants.subdivisions - n * 0.5
-    local gridPos = sm.vec3.new( math.floor( a.x ), math.floor( a.y ), math.floor( a.z ) ) + n
-
-    return gridPos, result.normalLocal
-end
-
-local function calculateRightVector(vector)
-    local yaw = math.atan2(vector.y, vector.x) - math.pi / 2
-    return sm.vec3.new(math.cos(yaw), math.sin(yaw), 0)
-end
-
-local function calculateUpVector(vector)
-    return calculateRightVector(vector):cross(vector)
-end
-
 function ZiplineGun:sv_n_onShoot(args)
     local start = args.start
     local hit, result = sm.physics.raycast(start, start + args.dir * MAXZIPLINELENGTH, nil, ZIPLINESHOOTFILTER)
@@ -463,26 +440,16 @@ end
 function ZiplineGun:sv_createPole(result)
     local pole
     if result.type == "body" then
-        print("body")
         local shape = result:getShape()
-        if not shape.isBlock then
-            print("not block, abort")
-            return
-        end
+        if not shape.isBlock then return end
 
-        local gridPos, normal = self:getBlockPos(result)
-        local rot = shape.localRotation
-        pole = shape.body:createPart(ZIPLINEPOLE, gridPos, normal, rot * vec3_right)
-
-        --local localRot = shape.localRotation
-        --local normal = result.normalLocal
-        --shape.body:createPart(ZIPLINEPOLE, shape:getClosestBlockLocalPosition(result.pointWorld), normal, localRot * vec3_right)
+		local normal = result.normalLocal
+		local rot = sm.vec3.getRotation(vec3_up, result.normalWorld)
+        pole = shape.body:createPart(ZIPLINEPOLE, shape:getClosestBlockLocalPosition(result.pointWorld + result.normalLocal), sm.vec3.closestAxis(rot * shape.zAxis), sm.vec3.closestAxis(rot * shape.xAxis))
     else
-        print("terrain")
-
-        --local gridPos, normal = self:getBlockPos(result)
-        --gridPos = gridPos * 0.25
         local gridPos, normal = result.pointWorld, result.normalWorld
+		if normal == vec3_zero then return end
+
         pole = sm.shape.createPart(ZIPLINEPOLE, gridPos - normal * 0.15, sm.vec3.getRotation(vec3_up, normal), false, true)
     end
 
