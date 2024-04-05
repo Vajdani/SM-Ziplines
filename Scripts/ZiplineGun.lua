@@ -453,6 +453,7 @@ function ZiplineGun:sv_createPole(result)
         pole = sm.shape.createPart(ZIPLINEPOLE, gridPos - normal * 0.15, sm.vec3.getRotation(vec3_up, normal), false, true)
     end
 
+	pole.interactable.publicData = {}
     return pole
 end
 

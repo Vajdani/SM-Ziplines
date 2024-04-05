@@ -41,13 +41,13 @@ function ZiplineInteraction:client_onUpdate()
         --return
     end
 
-    local hit, pole = DoZiplineInteractionRaycast(isRidingZipline and self.poleTrigger)
-    if hit then
-        sm.gui.setInteractionText("", sm.gui.getKeyBinding("Use", true), "#{INTERACTION_USE}")
-    end
-
     local lock = char:getLockingInteractable()
     if lock and lock ~= self.lockingPole or isRidingZipline then return end
+
+    local hit, pole = DoZiplineInteractionRaycast(isRidingZipline and self.poleTrigger)
+    if hit then
+        sm.gui.setInteractionText("", sm.gui.getKeyBinding("Use", true), "Attach to zipline")
+    end
 
     if self.poleTrigger ~= pole then
         if pole then

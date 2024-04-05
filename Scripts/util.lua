@@ -6,15 +6,15 @@ vec3_zero    = sm.vec3.zero()
 MAXZIPLINELENGTH = 50
 MAXZIPLINEANGLE = 30
 MAXZIPLINEANGLE_RAD = math.rad(MAXZIPLINEANGLE)
+ZIPLINEACCELERATIONRATE = 0.5
 BASEZIPLINESPEED = 5
 DOWNHILLMULTIPLIER = 1
 UPHILLMULTIPLIER = -0.5
-BOOSTMULTIPLIER = 1.5
+BOOSTMULTIPLIER = 2.5
 
 ZIPLINEPOLE = sm.uuid.new("2327aad6-0a6e-480e-9c73-c11c40dfaf37")
 ZIPLINESHOOTFILTER = sm.physics.filter.dynamicBody + sm.physics.filter.staticBody + sm.physics.filter.terrainAsset + sm.physics.filter.terrainSurface
 ZIPLINECLEARENCEFILTER = sm.physics.filter.terrainAsset + sm.physics.filter.terrainSurface
-ZIPLINEACCELERATIONRATE = 0.5
 
 
 

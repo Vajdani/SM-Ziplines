@@ -25,6 +25,31 @@
 				"buoyancy": 1
 			},
 			"flammable": false
+		},
+		{
+			"uuid": "8450b872-b199-4c25-827a-34a48a4be4cf",
+			"name": "obj_interactive_ziplineSlider",
+			"renderable": "$CONTENT_DATA/Objects/Renderables/obj_interactive_ziplineSlider.rend",
+			"color": "df7f01",
+			"box": {
+				"x": 1,
+				"y": 1,
+				"z": 1
+			},
+			"scripted": {
+				"filename": "$CONTENT_DATA/Scripts/ZiplineSlider.lua",
+				"classname": "ZiplineSlider",
+				"data": {}
+			},
+			"rotationSet": "PropYZ",
+			"physicsMaterial": "Mechanical",
+			"ratings": {
+				"density": 2,
+				"durability": 3,
+				"friction": 5,
+				"buoyancy": 2
+			},
+			"flammable": false
 		}
     ]
 }
