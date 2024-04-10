@@ -106,7 +106,7 @@ function ZiplinePole:sv_checkIfCanConnect(pole, dt)
     return true, zipDir, zipDir_noZ, ziplineLength, startPos, targetPos
 end
 
-local charOffset = vec3_up * 0.55
+local charOffset = vec3_up * 0.75
 function ZiplinePole:server_onFixedUpdate(dt)
     local child = self.interactable:getChildren()[1]
     if child and not self.sv_targetPole then
@@ -130,6 +130,7 @@ function ZiplinePole:server_onFixedUpdate(dt)
         return
     end
 
+    local gravityAdjustment = sm.vec3.new(0,0, 10 - sm.physics.getGravity()) * dt
     for k, data in pairs(self.riders) do
         local worldPos, direction, moveDir, isReverse
         local char, shape = data.char, data.shape
@@ -176,7 +177,7 @@ function ZiplinePole:server_onFixedUpdate(dt)
                 mass = mass + body.mass
             end
 
-            sm.physics.applyImpulse(sBody, ((pos - worldPos) * 2 - ( sBody.velocity * 0.3 )) * mass, true)
+            sm.physics.applyImpulse(sBody, ((pos - worldPos) * 2 - ( sBody.velocity * 0.3 ) - gravityAdjustment) * mass, true)
             sm.physics.applyTorque(sBody, (direction:cross(zipDir_noZ) + shape.at:cross(vec3_up) - sBody.angularVelocity * 0.3) * mass * dt, true)
         end
 

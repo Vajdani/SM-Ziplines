@@ -25,6 +25,8 @@ end
 
 function ZiplineInteraction:client_onUpdate()
     local char = sm.localPlayer.getPlayer().character
+    if not sm.exists(char) or char:isTumbling() then return end
+
     local cPub = char.clientPublicData
     local isRidingZipline = cPub and cPub.isRidingZipline
     if isRidingZipline then
@@ -44,13 +46,13 @@ function ZiplineInteraction:client_onUpdate()
     local lock = char:getLockingInteractable()
     if lock and lock ~= self.lockingPole or isRidingZipline then return end
 
-    local hit, pole = DoZiplineInteractionRaycast(isRidingZipline and self.poleTrigger)
-    if hit then
+    local pole = DoZiplineInteractionRaycast(isRidingZipline and self.poleTrigger)
+    if pole then
         sm.gui.setInteractionText("", sm.gui.getKeyBinding("Use", true), "Attach to zipline")
     end
 
     if self.poleTrigger ~= pole then
-        if pole then
+        if pole ~= nil and sm.exists(pole) then
             local lockingPole = pole:getUserData().pole.interactable
             char:setLockingInteractable(lockingPole)
             self.lockingPole = lockingPole

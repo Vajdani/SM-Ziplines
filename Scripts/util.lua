@@ -68,12 +68,19 @@ function GetPoleEnd(pole, dt)
     return pole:getInterpolatedWorldPosition() + pole.velocity * (dt or 0) + pole:getInterpolatedUp() * 1.75
 end
 
+local function IsFluid(userData)
+    return userData.water or userData.chemical or userData.oil
+end
+
 ---@param ignore? AreaTrigger
----@return boolean, AreaTrigger
+---@return AreaTrigger?
 function DoZiplineInteractionRaycast(ignore)
     local start = sm.localPlayer.getRaycastStart()
-    local hit, result = sm.physics.raycast(start, start + sm.localPlayer.getDirection() * 5, ignore, 8) --sm.physics.spherecast(start, start + sm.localPlayer.getDirection() * 5, 0.15, nil, 8)
-    return hit, result:getAreaTrigger()
+    local hit, result = sm.physics.raycast(start, start + sm.localPlayer.getDirection() * 5, ignore, ZIPLINESHOOTFILTER + sm.physics.filter.areaTrigger) --sm.physics.spherecast(start, start + sm.localPlayer.getDirection() * 5, 0.15, nil, 8)
+
+    local trigger = result:getAreaTrigger()
+    local userData = trigger and trigger:getUserData() or {}
+    return (userData and not IsFluid(userData)) and trigger or nil
 end
 
 function BoolToNum(bool)
