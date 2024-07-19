@@ -1,1 +1,14 @@
-{}
+{
+    "2327aad6-0a6e-480e-9c73-c11c40dfaf37" : {
+        "title": "Zipline Pole",
+        "description": "Ziplines can be connected between them. Connect them via the Connect Tool, or shoot them out of the Zipline Gun."
+    },
+    "8450b872-b199-4c25-827a-34a48a4be4cf" : {
+        "title": "Zipline Rider",
+        "description": "A part that can attach itself to ziplines.\nInputs:\n-#df7f00Orange#919191: Attach/Detach\n-#eeeeeeWhite#919191: Move forwards\n-Black#919191: Move backwards"
+    },
+    "ae92e68a-af40-4ad9-9b4d-cb4eef9d0737" : {
+        "title": "Zipline Gun",
+        "description": "Shoots Zipline Poles."
+    }
+}

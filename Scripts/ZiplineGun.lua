@@ -409,7 +409,7 @@ function ZiplineGun:onAim( aiming )
 	end
 end
 
-function ZiplineGun:sv_n_onShoot(args)
+function ZiplineGun:sv_n_onShoot(args, caller)
     if not IsSmallerAngle(args.dir, MAXZIPLINEANGLE) then
 		return
 	end
@@ -426,20 +426,20 @@ function ZiplineGun:sv_n_onShoot(args)
     local groundHit, resultGround = sm.physics.raycast(charPos, charPos - char:getSurfaceNormal() * 2.5, nil, ZIPLINESHOOTFILTER)
 
     local preset = args.attachedPole
-    local parent = preset or self:sv_createPole(resultGround)
+    local parent = preset or self:sv_createPole(resultGround, caller)
     if not parent then return end
 
     if preset then
-        sm.event.sendToInteractable(preset.interactable, "sv_updateTarget", self:sv_createPole(result))
+        sm.event.sendToInteractable(preset.interactable, "sv_updateTarget", self:sv_createPole(result, caller))
     else
-        parent.interactable:setParams({ target = self:sv_createPole(result) })
+        parent.interactable:setParams({ target = self:sv_createPole(result, caller) })
     end
 
 	self.network:sendToClients( "cl_n_onShoot" )
 end
 
 ---@param result RaycastResult
-function ZiplineGun:sv_createPole(result)
+function ZiplineGun:sv_createPole(result, player)
     local pole
     if result.type == "body" then
         local shape = result:getShape()
@@ -454,6 +454,12 @@ function ZiplineGun:sv_createPole(result)
 
         pole = sm.shape.createPart(ZIPLINEPOLE, gridPos - normal * 0.15, sm.vec3.getRotation(vec3_up, normal), false, true)
     end
+
+	if pole and sm.game.getEnableAmmoConsumption() then
+		sm.container.beginTransaction()
+		sm.container.spend(player:getInventory(), ZIPLINEPOLE, 1)
+		sm.container.endTransaction()
+	end
 
     return pole
 end
