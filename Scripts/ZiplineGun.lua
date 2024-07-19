@@ -410,12 +410,14 @@ function ZiplineGun:onAim( aiming )
 end
 
 function ZiplineGun:sv_n_onShoot(args)
-    local start = args.start
-    local hit, result = sm.physics.raycast(start, start + args.dir * MAXZIPLINELENGTH, nil, ZIPLINESHOOTFILTER)
+    if not IsSmallerAngle(args.dir, MAXZIPLINEANGLE) then
+		return
+	end
 
+	local start = args.start
+    local hit, result = sm.physics.raycast(start, start + args.dir * MAXZIPLINELENGTH, nil, ZIPLINESHOOTFILTER)
     local _type = result.type
     if _type == "unknown" then
-        print("didnt hit anything valid")
         return
     end
 
