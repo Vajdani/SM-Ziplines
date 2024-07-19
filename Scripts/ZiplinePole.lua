@@ -69,8 +69,7 @@ ZiplinePole.maxChildCount = 1
 function ZiplinePole:server_onCreate()
     self.riders = {}
 
-    local data = self.interactable.publicData or self.storage:load() or {}
-    self.interactable.publicData = {}
+    local data = self.params or self.storage:load() or {}
     self:sv_updateTarget(data.target)
 end
 
@@ -81,7 +80,10 @@ function ZiplinePole:sv_updateTarget(target)
         self.sv_targetPole.interactable.publicData = {}
     end
 
-    self.interactable.publicData.poleParent = self.shape
+    if not (self.interactable.publicData or {}).poleParent then
+        self.interactable.publicData = { poleParent = self.shape }
+    end
+
     self.sv_targetPole = target
     self.storage:save({ target = self.sv_targetPole })
     self.network:setClientData(self.sv_targetPole)

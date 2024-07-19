@@ -432,7 +432,7 @@ function ZiplineGun:sv_n_onShoot(args)
     if preset then
         sm.event.sendToInteractable(preset.interactable, "sv_updateTarget", self:sv_createPole(result))
     else
-        parent.interactable.publicData = { target = self:sv_createPole(result) }
+        parent.interactable:setParams({ target = self:sv_createPole(result) })
     end
 
 	self.network:sendToClients( "cl_n_onShoot" )
@@ -455,7 +455,6 @@ function ZiplineGun:sv_createPole(result)
         pole = sm.shape.createPart(ZIPLINEPOLE, gridPos - normal * 0.15, sm.vec3.getRotation(vec3_up, normal), false, true)
     end
 
-	pole.interactable.publicData = {}
     return pole
 end
 
