@@ -1,13 +1,13 @@
 vec3_up      = sm.vec3.new(0,0,1)
 vec3_right   = sm.vec3.new(1,0,0)
-vec3_forward = sm.vec3.new(1,0,0)
+vec3_forward = sm.vec3.new(0,1,0)
 vec3_zero    = sm.vec3.zero()
 
-MAXZIPLINELENGTH = 50
-MAXZIPLINEANGLE = 30
+MAXZIPLINELENGTH = 200 --50
+MAXZIPLINEANGLE = 45 --30
 MAXZIPLINEANGLE_RAD = math.rad(MAXZIPLINEANGLE)
 ZIPLINEACCELERATIONRATE = 0.5
-BASEZIPLINESPEED = 5
+BASEZIPLINESPEED = 1.25 --5
 DOWNHILLMULTIPLIER = 1
 UPHILLMULTIPLIER = -0.5
 BOOSTMULTIPLIER = 2.5
@@ -22,7 +22,7 @@ function CanInteract()
     local hit, result = sm.localPlayer.getRaycast(7.5)
     if hit then
         local shape = result:getShape()
-        if shape and shape.interactable and shape.usable or result:getHarvestable() or result:getLiftData() then
+        if shape and shape.interactable and shape.usable or result:getHarvestable() or result:getLiftData() or result:getJoint() --[[or result:getCharacter()]] then
             return false
         end
     end
@@ -34,7 +34,7 @@ end
 ---@param A Vec3 The point
 ---@param B Vec3 First point of the line
 ---@param C Vec3 Second point of the line
----@return number, Vec3
+---@return number fraction, Vec3 direction, Vec3 point
 function CalculateZiplineProgress(A, B, C)
     local d = (C - B):normalize()
     local v = A - B
@@ -42,11 +42,15 @@ function CalculateZiplineProgress(A, B, C)
     local P = B + d * t
 
     local zipDir = C - B
-    return sm.util.clamp((P - B):length() / (zipDir):length(), 0, 1), zipDir:normalize()
+    return sm.util.clamp((P - B):length() / zipDir:length(), 0, 1), zipDir:normalize(), P
 end
 
 local boostAngle = 0.8
 function CanPlayerBoost(zipDir, isReverse, playerDir)
+    if math.abs(zipDir.z) < 0.1 then
+        return false
+    end
+
     local dot = zipDir:dot(playerDir)
     return zipDir.z < 0 and dot > boostAngle and not isReverse or zipDir.z > 0 and dot < -boostAngle and isReverse
 end
@@ -65,7 +69,7 @@ function GetPoleEnd(pole, dt)
         return vec3_zero
     end
 
-    return pole:getInterpolatedWorldPosition() + pole.velocity * (dt or 0) + pole:getInterpolatedUp() * 1.75
+    return pole:getInterpolatedWorldPosition() + pole.velocity * (dt or (1/60)) + pole:getInterpolatedUp() * 1.75
 end
 
 local function IsFluid(userData)
