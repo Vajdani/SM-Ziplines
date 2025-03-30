@@ -4,9 +4,14 @@ vec3_forward = sm.vec3.new(0,1,0)
 vec3_zero    = sm.vec3.zero()
 
 MAXZIPLINELENGTH = 200 --50
-MAXZIPLINEANGLE = 45 --30
+MAXZIPLINEANGLE = 75 --45 --30
 MAXZIPLINEANGLE_RAD = math.rad(MAXZIPLINEANGLE)
 ZIPLINEACCELERATIONRATE = 0.5
+ZIPLINELINEFRACTIONLIMIT = 0.25
+ZIPLINELOWERLINEFRACTIONLIMIT = 0.02
+ZIPLINEUPPERLINEFRACTIONLIMIT = 0.98
+ZIPLINEINTERACTIONRANGE = 7.5
+ZIPLINEINTERACTIONRANGESQUARED = ZIPLINEINTERACTIONRANGE^2
 BASEZIPLINESPEED = 1.25 --5
 DOWNHILLMULTIPLIER = 1
 UPHILLMULTIPLIER = -0.5
@@ -19,11 +24,11 @@ ZIPLINECLEARENCEFILTER = sm.physics.filter.terrainAsset + sm.physics.filter.terr
 
 
 function CanInteract()
-    local hit, result = sm.localPlayer.getRaycast(7.5)
+    local hit, result = sm.localPlayer.getRaycast(ZIPLINEINTERACTIONRANGE)
     if hit then
         local shape = result:getShape()
         if shape and shape.interactable and shape.usable or result:getHarvestable() or result:getLiftData() or result:getJoint() --[[or result:getCharacter()]] then
-            return false
+            return shape.interactable or false
         end
     end
 
@@ -36,13 +41,15 @@ end
 ---@param C Vec3 Second point of the line
 ---@return number fraction, Vec3 direction, Vec3 point
 function CalculateZiplineProgress(A, B, C)
+    local zipDir = C - B
+    local zipLength = zipDir:length()
+
     local d = (C - B):normalize()
     local v = A - B
-    local t = v:dot(d)
+    local t = sm.util.clamp(v:dot(d), 0, zipLength) --zipLength * ZIPLINEUPPERLINEFRACTIONLIMIT)
     local P = B + d * t
 
-    local zipDir = C - B
-    return sm.util.clamp((P - B):length() / zipDir:length(), 0, 1), zipDir:normalize(), P
+    return sm.util.clamp((P - B):length() / zipLength, 0, 1), zipDir:normalize(), P
 end
 
 local boostAngle = 0.8
@@ -85,10 +92,6 @@ function DoZiplineInteractionRaycast(ignore)
     local trigger = result:getAreaTrigger()
     local userData = trigger and trigger:getUserData() or {}
     return (userData and not IsFluid(userData)) and trigger or nil
-end
-
-function BoolToNum(bool)
-    return bool and 1 or 0
 end
 
 function ColourLerp(c1, c2, t)

@@ -44,12 +44,14 @@ function ZiplineInteraction:client_onUpdate()
     end
 
     local lock = char:getLockingInteractable()
-    if lock and lock ~= self.lockingPole or isRidingZipline then return end
+    if lock and lock ~= self.lockingPole then return end
 
     local pole = DoZiplineInteractionRaycast(isRidingZipline and self.poleTrigger)
     if pole then
         sm.gui.setInteractionText("", sm.gui.getKeyBinding("Use", true), "Attach to zipline")
     end
+
+    if isRidingZipline then return end
 
     if self.poleTrigger ~= pole then
         if pole ~= nil and sm.exists(pole) then

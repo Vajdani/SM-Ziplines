@@ -48,7 +48,6 @@ end
 
 
 ---@class Rider
----@field progress number
 ---@field acceleration number
 ---@field isReverse? boolean
 ---@field boosting boolean
@@ -87,11 +86,11 @@ function ZiplinePole:sv_updateTarget(target)
     self.sv_targetPole = target
     self.storage:save({ target = self.sv_targetPole })
     self.network:setClientData(self.sv_targetPole)
-    self:sv_freeRiders()
+    self:sv_freeRiders(true)
 end
 
 function ZiplinePole:server_onDestroy()
-    self:sv_freeRiders()
+    self:sv_freeRiders(false)
 end
 
 function ZiplinePole:sv_checkIfCanConnect(pole, dt)
@@ -108,7 +107,6 @@ function ZiplinePole:sv_checkIfCanConnect(pole, dt)
     return true, zipDir, zipDir_noZ, ziplineLength, startPos, targetPos
 end
 
-local charOffset = vec3_up * 0.75
 function ZiplinePole:server_onFixedUpdate(dt)
     local child = self.interactable:getChildren()[1]
     if child and not self.sv_targetPole then
@@ -122,23 +120,24 @@ function ZiplinePole:server_onFixedUpdate(dt)
 
     if not sm.exists(self.sv_targetPole) then
         self.sv_targetPole = nil
-        self:sv_freeRiders()
+        self:sv_freeRiders(true)
         return
     end
 
     local succes, zipDir, zipDir_noZ, ziplineLength, startPos, targetPos  = self:sv_checkIfCanConnect(self.sv_targetPole, dt)
     if not succes then
+        print(succes, zipDir, zipDir_noZ, ziplineLength, startPos, targetPos)
         self:sv_updateTarget(nil)
         return
     end
 
-    local gravityAdjustment = sm.vec3.new(0,0, 10 - sm.physics.getGravity()) * dt
+    local gravityAdjustment = sm.vec3.new(0, 0, -sm.physics.getGravity()) * dt
     for k, data in pairs(self.riders) do
         local worldPos, direction, moveDir, isReverse
         local char, shape = data.char, data.shape
         if char then
             if not sm.exists(char) then
-                self:sv_freeRider(k)
+                self:sv_freeRider(k, true)
                 goto continue
             end
 
@@ -146,13 +145,13 @@ function ZiplinePole:server_onFixedUpdate(dt)
                 char:setLockingInteractable(self.interactable)
             end
 
-            worldPos = char.worldPosition
+            worldPos = char.worldPosition + (vec3_up * char:getHeight() * 0.5)
             direction = char.direction
             isReverse = data.isReverse
             moveDir = isReverse and -1 or 1
-        else
+        elseif shape then
             if not sm.exists(shape) or shape.body:isOnLift() then
-                self:sv_freeRider(k)
+                self:sv_freeRider(k, true)
                 goto continue
             end
 
@@ -160,26 +159,41 @@ function ZiplinePole:server_onFixedUpdate(dt)
             isReverse = moveDir == -1
         end
 
+        local lineFraction, _, point = CalculateZiplineProgress(worldPos, startPos, targetPos)
+        if (point - worldPos):length2() >= ZIPLINEINTERACTIONRANGESQUARED then
+            self:sv_freeRider(k, true)
+            goto continue
+        end
+
         local isGoingDownhill = zipDir.z < 0 and not isReverse or zipDir.z > 0 and isReverse
-        local fraction = math.acos(zipDir:dot(zipDir_noZ)) / MAXZIPLINEANGLE_RAD
-        local ziplineSpeed = BASEZIPLINESPEED * (1 + (isGoingDownhill and DOWNHILLMULTIPLIER * fraction or UPHILLMULTIPLIER * fraction))
+        local fraction = math.acos(math.min(zipDir:dot(zipDir_noZ), 1)) / MAXZIPLINEANGLE_RAD
+        local ziplineSpeed = BASEZIPLINESPEED * (1 + (isGoingDownhill and DOWNHILLMULTIPLIER or UPHILLMULTIPLIER) * fraction)
         if CanPlayerBoost(zipDir, isReverse, direction) and data.boosting then
             ziplineSpeed = ziplineSpeed * BOOSTMULTIPLIER
         end
 
         data.acceleration = math.min(data.acceleration + dt * ZIPLINEACCELERATIONRATE, 1)
-        data.progress = sm.util.clamp(data.progress + dt * ziplineSpeed * data.acceleration / ziplineLength * moveDir, 0, 1)
-        local pos = sm.vec3.lerp(startPos, targetPos, sm.util.clamp(data.progress, 0.01, 0.99))
-        if char then
-            sm.physics.applyImpulse(char, ((pos - charOffset - worldPos) * 2 - ( char.velocity * 0.3 )) * char.mass)
+        local dir = vec3_zero
+        --if (lineFraction + 0.001) >= ZIPLINEUPPERLINEFRACTIONLIMIT and (not isReverse or moveDir == 0) then
+        if (targetPos - worldPos):length2() <= ZIPLINELINEFRACTIONLIMIT and (not isReverse or moveDir == 0) then
+            point = targetPos - zipDir * 0.25
+        --elseif lineFraction <= ZIPLINELOWERLINEFRACTIONLIMIT <= 0.5 and (isReverse or moveDir == 0) then
+        elseif (startPos - worldPos):length2() <= ZIPLINELINEFRACTIONLIMIT and (isReverse or moveDir == 0) then
+            point = startPos + zipDir * 0.25
         else
+            dir = zipDir * ziplineSpeed * moveDir * data.acceleration
+        end
+
+        if char then
+            sm.physics.applyImpulse(char, ((point - worldPos) * 2 + dir - ( char.velocity * 0.3 )) * char.mass)
+        elseif shape then
             local sBody = shape.body
             local mass = 0
             for _k, body in pairs(sBody:getCreationBodies()) do
                 mass = mass + body.mass
             end
 
-            sm.physics.applyImpulse(sBody, ((pos - worldPos) * 2 - ( sBody.velocity * 0.3 ) - gravityAdjustment) * mass, true)
+            sm.physics.applyImpulse(sBody, (((point + dir) - worldPos) * 2 - ( sBody.velocity * 0.3 ) - gravityAdjustment) * mass, true)
             sm.physics.applyTorque(sBody, (direction:cross(zipDir_noZ) + shape.at:cross(vec3_up) - sBody.angularVelocity * 0.3) * mass * dt, true)
         end
 
@@ -187,30 +201,28 @@ function ZiplinePole:server_onFixedUpdate(dt)
     end
 end
 
-function ZiplinePole:sv_freeRiders()
+function ZiplinePole:sv_freeRiders(applyImpulse)
     for k, data in pairs(self.riders) do
-        self:sv_freeRider(k)
+        self:sv_freeRider(k, applyImpulse)
     end
 end
 
-function ZiplinePole:sv_freeRider(index)
+function ZiplinePole:sv_freeRider(index, applyImpulse)
     local data = self.riders[index]
     local char = data.char
     if char then
         if sm.exists(char) then
             char:setLockingInteractable(nil)
 
-            if not char:isOnGround() then
+            if not char:isOnGround() and applyImpulse then
                 local vel = char.velocity
                 sm.physics.applyImpulse(char, sm.vec3.new(vel.x, vel.y, -vel.z) * char.mass)
             end
         end
 
         sm.event.sendToTool(g_ziplineInteraction, "sv_setZiplineState", { player = data.player, state = false })
-    else
-        if sm.exists(data.shape) then
-            sm.event.sendToInteractable(data.int, "sv_setTarget", nil)
-        end
+    elseif sm.exists(data.shape) then
+        sm.event.sendToInteractable(data.int, "sv_setTarget", nil)
     end
 
     self.riders[index] = nil
@@ -223,12 +235,11 @@ function ZiplinePole:sv_toggleAttachment(eventPlayer, caller)
     local pId = player.id
     local char = player.character
     if self.riders[pId] then
-        self:sv_freeRider(pId)
+        self:sv_freeRider(pId, true)
     else
-        local progress, zipDir = CalculateZiplineProgress(char.worldPosition, GetPoleEnd(self.shape), GetPoleEnd(self.sv_targetPole))
+        local frac, zipDir = CalculateZiplineProgress(char.worldPosition, GetPoleEnd(self.shape), GetPoleEnd(self.sv_targetPole))
         local isReverse = zipDir:dot(char.direction) < 0
         self.riders[pId] = {
-            progress = progress,
             acceleration = 0,
             isReverse = isReverse,
             boosting = false,
@@ -256,11 +267,9 @@ end
 function ZiplinePole:sv_attachSlider(slider)
     local sId = slider.id
     if self.riders[sId] then
-        self:sv_freeRider(sId)
+        self:sv_freeRider(sId, true)
     else
-        local progress, zipDir = CalculateZiplineProgress(slider.worldPosition, GetPoleEnd(self.shape), GetPoleEnd(self.sv_targetPole))
         self.riders[sId] = {
-            progress = progress,
             acceleration = 0,
             moveDir = 0,
             boosting = false,
@@ -281,6 +290,8 @@ end
 
 ---@param caller Player
 function ZiplinePole:sv_boostUpdate(state, caller)
+    if self.riders[caller.id] == nil then return end
+
     self.riders[caller.id].boosting = state
 end
 
@@ -358,14 +369,24 @@ function ZiplinePole:client_onAction(action, state)
 
     if isRidingZipline then
         if action == 15 then
-            local hit, pole = DoZiplineInteractionRaycast(self.line.trigger)
+            local pole = DoZiplineInteractionRaycast(self.line.trigger)
             if pole then
                 self.network:sendToServer("sv_attachToOtherPole", pole:getUserData().pole.interactable)
-            elseif CanInteract() then
-                self.network:sendToServer("sv_toggleIsReverse")
+                return true
+            else
+                local result = CanInteract()
+                if type(result) == "Interactable" then
+                    if result:hasSeat() then
+                        sm.localPlayer.getPlayer().character:setLockingInteractable(nil)
+                        self.network:sendToServer("sv_toggleAttachment")
+                    end
+                elseif result then
+                    self.network:sendToServer("sv_toggleIsReverse")
+                    return true
+                end
             end
 
-            return true
+            return false
         elseif action == 16 then
             self.network:sendToServer("sv_toggleAttachment")
         end
