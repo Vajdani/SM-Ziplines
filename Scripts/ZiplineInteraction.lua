@@ -44,7 +44,7 @@ function ZiplineInteraction:client_onUpdate()
     end
 
     local lock = char:getLockingInteractable()
-    if lock and lock ~= self.lockingPole then return end
+    if lock and lock:hasSeat() then return end
 
     local pole = DoZiplineInteractionRaycast(isRidingZipline and self.poleTrigger)
     if pole then

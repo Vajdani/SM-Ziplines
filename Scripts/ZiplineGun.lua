@@ -409,6 +409,14 @@ function ZiplineGun:onAim( aiming )
 	end
 end
 
+local function CreatePole(data)
+	if type(data[2]) == "Quat" then
+		return sm.shape.createPart(ZIPLINEPOLE, data[1], data[2] --[[@as Quat]], false, true)
+	else
+		return data[4]:createPart(ZIPLINEPOLE, data[1], data[2] --[[@as Vec3]], data[3])
+	end
+end
+
 function ZiplineGun:sv_n_onShoot(args, caller)
     if not IsSmallerAngle(args.dir, MAXZIPLINEANGLE) then
 		return
@@ -426,40 +434,61 @@ function ZiplineGun:sv_n_onShoot(args, caller)
     local groundHit, resultGround = sm.physics.raycast(charPos, charPos - char:getSurfaceNormal() * 2.5, nil, ZIPLINESHOOTFILTER)
 
     local preset = args.attachedPole
-    local parent = preset or self:sv_createPole(resultGround, caller)
+    local parent = preset or self:sv_createPole(resultGround)
     if not parent then return end
 
+	local child = self:sv_createPole(result)
+	if not child then return end
+
+	if sm.game.getEnableAmmoConsumption() then
+		sm.container.beginTransaction()
+		sm.container.spend(caller:getInventory(), ZIPLINEPOLE, preset and 1 or 2)
+		sm.container.endTransaction()
+	end
+
+	if not preset then
+		parent = CreatePole(parent)
+	end
+
+	child = CreatePole(child)
+
     if preset then
-        sm.event.sendToInteractable(preset.interactable, "sv_updateTarget", self:sv_createPole(result, caller))
+        sm.event.sendToInteractable(preset.interactable, "sv_updateTarget", child)
     else
-        parent.interactable:setParams({ target = self:sv_createPole(result, caller) })
+        parent.interactable:setParams({ target = child })
     end
 
 	self.network:sendToClients( "cl_n_onShoot" )
 end
 
 ---@param result RaycastResult
-function ZiplineGun:sv_createPole(result, player)
+function ZiplineGun:sv_createPole(result)
     local pole
     if result.type == "body" then
-        local shape = result:getShape()
-        if not shape.isBlock then return end
+		local shape = result:getShape()
+		if not shape.isBlock then return end
 
-		local normal = result.normalLocal
-		local rot = sm.vec3.getRotation(vec3_up, result.normalWorld)
-        pole = shape.body:createPart(ZIPLINEPOLE, shape:getClosestBlockLocalPosition(result.pointWorld + result.normalLocal), sm.vec3.closestAxis(rot * shape.zAxis), sm.vec3.closestAxis(rot * shape.xAxis))
+		local normal = sm.vec3.closestAxis( result.normalLocal )
+		local position = result.pointLocal * 4 - result.normalLocal * 0.1
+		position.x = math.floor( position.x )
+		position.y = math.floor( position.y )
+		position.z = math.floor( position.z )
+
+		local xAxis
+		if normal.x > 0 or normal.y > 0 or normal.z > 0 then
+		  	position = position + normal
+		  	xAxis = sm.vec3.new( normal.z, normal.x, normal.y )
+		else
+		  	xAxis = sm.vec3.new( -normal.y, -normal.z, -normal.x )
+		end
+
+		pole = { position, normal, xAxis, shape.body }
     else
         local gridPos, normal = result.pointWorld, result.normalWorld
 		if normal == vec3_zero then return end
 
-        pole = sm.shape.createPart(ZIPLINEPOLE, gridPos - normal * 0.15, sm.vec3.getRotation(vec3_up, normal), false, true)
+        pole = { gridPos - normal * 0.15, sm.vec3.getRotation(vec3_up, normal) }
     end
-
-	if pole and sm.game.getEnableAmmoConsumption() then
-		sm.container.beginTransaction()
-		sm.container.spend(player:getInventory(), ZIPLINEPOLE, 1)
-		sm.container.endTransaction()
-	end
 
     return pole
 end
