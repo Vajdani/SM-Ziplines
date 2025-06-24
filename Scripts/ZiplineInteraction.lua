@@ -55,13 +55,7 @@ function ZiplineInteraction:client_onUpdate()
 
     if self.poleTrigger ~= pole then
         if pole ~= nil and sm.exists(pole) then
-            local data = pole:getUserData()
-            if not data then return end
-
-            local lockingPole = data.pole
-            if not lockingPole or not sm.exists(lockingPole) then return end
-
-            lockingPole = lockingPole.interactable
+            local lockingPole = pole:getUserData().pole.interactable
             char:setLockingInteractable(lockingPole)
             self.lockingPole = lockingPole
         else

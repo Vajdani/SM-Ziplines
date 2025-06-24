@@ -417,6 +417,38 @@ local function CreatePole(data)
 	end
 end
 
+---@param result RaycastResult
+local function GetPoleData(result)
+	local pole
+	if result.type == "body" then
+		local shape = result:getShape()
+		if not shape.isBlock then return end
+
+		local normal = sm.vec3.closestAxis( result.normalLocal )
+		local position = result.pointLocal * 4 - result.normalLocal * 0.1
+		position.x = math.floor( position.x )
+		position.y = math.floor( position.y )
+		position.z = math.floor( position.z )
+
+		local xAxis
+		if normal.x > 0 or normal.y > 0 or normal.z > 0 then
+			position = position + normal
+			xAxis = sm.vec3.new( normal.z, normal.x, normal.y )
+		else
+			xAxis = sm.vec3.new( -normal.y, -normal.z, -normal.x )
+		end
+
+		pole = { position, normal, xAxis, shape.body }
+	else
+		local gridPos, normal = result.pointWorld, result.normalWorld
+		if normal == vec3_zero then return end
+
+		pole = { gridPos - normal * 0.15, sm.vec3.getRotation(vec3_up, normal) }
+	end
+
+	return pole
+end
+
 function ZiplineGun:sv_n_onShoot(args, caller)
     if not IsSmallerAngle(args.dir, MAXZIPLINEANGLE) then
 		return
@@ -434,10 +466,10 @@ function ZiplineGun:sv_n_onShoot(args, caller)
     local groundHit, resultGround = sm.physics.raycast(charPos, charPos - char:getSurfaceNormal() * 2.5, nil, ZIPLINESHOOTFILTER)
 
     local preset = args.attachedPole
-    local parent = preset or self:sv_createPole(resultGround)
+    local parent = preset or GetPoleData(resultGround)
     if not parent then return end
 
-	local child = self:sv_createPole(result)
+	local child = GetPoleData(result)
 	if not child then return end
 
 	if sm.game.getEnableAmmoConsumption() then
@@ -459,38 +491,6 @@ function ZiplineGun:sv_n_onShoot(args, caller)
     end
 
 	self.network:sendToClients( "cl_n_onShoot" )
-end
-
----@param result RaycastResult
-function ZiplineGun:sv_createPole(result)
-    local pole
-    if result.type == "body" then
-		local shape = result:getShape()
-		if not shape.isBlock then return end
-
-		local normal = sm.vec3.closestAxis( result.normalLocal )
-		local position = result.pointLocal * 4 - result.normalLocal * 0.1
-		position.x = math.floor( position.x )
-		position.y = math.floor( position.y )
-		position.z = math.floor( position.z )
-
-		local xAxis
-		if normal.x > 0 or normal.y > 0 or normal.z > 0 then
-		  	position = position + normal
-		  	xAxis = sm.vec3.new( normal.z, normal.x, normal.y )
-		else
-		  	xAxis = sm.vec3.new( -normal.y, -normal.z, -normal.x )
-		end
-
-		pole = { position, normal, xAxis, shape.body }
-    else
-        local gridPos, normal = result.pointWorld, result.normalWorld
-		if normal == vec3_zero then return end
-
-        pole = { gridPos - normal * 0.15, sm.vec3.getRotation(vec3_up, normal) }
-    end
-
-    return pole
 end
 
 function ZiplineGun:cl_n_onShoot()
@@ -551,12 +551,19 @@ function ZiplineGun:client_onEquippedUpdate( primaryState, secondaryState, f )
         self.attachedPole = nil
     end
 
-    local hit, result = sm.localPlayer.getRaycast(MAXZIPLINELENGTH)
+	local rayStart, playerDir = sm.localPlayer.getRaycastStart(), sm.localPlayer.getDirection()
+    local hit, result = sm.physics.raycast(rayStart, rayStart + playerDir * MAXZIPLINELENGTH, sm.localPlayer.getPlayer().character, ZIPLINESHOOTFILTERTRIGGERCHARACTER)
     local toPole = self.attachedPole and (result.pointWorld - GetPoleEnd(self.attachedPole))
     local distance = self.attachedPole and math.min(toPole:length(), MAXZIPLINELENGTH) or MAXZIPLINELENGTH * result.fraction
     local isInRange = distance < MAXZIPLINELENGTH
 
-    local dir = self.attachedPole and toPole:normalize() or sm.localPlayer.getDirection()
+    local shape = result:getShape()
+	if result.type ~= "terrainAsset" and result.type ~= "terrainSurface" and (not shape or shape.interactable) then
+		sm.gui.displayAlertText("#ff0000Invalid surface", 1)
+		return true, true
+	end
+
+    local dir = self.attachedPole and toPole:normalize() or playerDir
     local isInAngleRange, angle = IsSmallerAngle(dir, MAXZIPLINEANGLE)
     sm.gui.displayAlertText(
         ("%s%.0fm\n#ffffffAngle: %s%.0f"):format(
@@ -583,7 +590,6 @@ function ZiplineGun:client_onEquippedUpdate( primaryState, secondaryState, f )
 
 
     if not self.attachedPole then
-        local shape = result:getShape()
         if shape and shape.uuid == ZIPLINEPOLE then
             sm.gui.setInteractionText("", sm.gui.getKeyBinding("ForceBuild", true), "Attach rope to pole")
             if f ~= self.prevF then

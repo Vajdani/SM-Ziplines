@@ -126,7 +126,6 @@ function ZiplinePole:server_onFixedUpdate(dt)
 
     local succes, zipDir, zipDir_noZ, ziplineLength, startPos, targetPos  = self:sv_checkIfCanConnect(self.sv_targetPole, dt)
     if not succes then
-        print(succes, zipDir, zipDir_noZ, ziplineLength, startPos, targetPos)
         self:sv_updateTarget(nil)
         return
     end
@@ -174,10 +173,8 @@ function ZiplinePole:server_onFixedUpdate(dt)
 
         data.acceleration = math.min(data.acceleration + dt * ZIPLINEACCELERATIONRATE, 1)
         local dir = vec3_zero
-        --if (lineFraction + 0.001) >= ZIPLINEUPPERLINEFRACTIONLIMIT and (not isReverse or moveDir == 0) then
         if (targetPos - worldPos):length2() <= ZIPLINELINEFRACTIONLIMIT and (not isReverse or moveDir == 0) then
             point = targetPos - zipDir * 0.25
-        --elseif lineFraction <= ZIPLINELOWERLINEFRACTIONLIMIT <= 0.5 and (isReverse or moveDir == 0) then
         elseif (startPos - worldPos):length2() <= ZIPLINELINEFRACTIONLIMIT and (isReverse or moveDir == 0) then
             point = startPos + zipDir * 0.25
         else

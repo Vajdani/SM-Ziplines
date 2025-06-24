@@ -19,6 +19,8 @@ BOOSTMULTIPLIER = 2.5
 
 ZIPLINEPOLE = sm.uuid.new("2327aad6-0a6e-480e-9c73-c11c40dfaf37")
 ZIPLINESHOOTFILTER = sm.physics.filter.dynamicBody + sm.physics.filter.staticBody + sm.physics.filter.terrainAsset + sm.physics.filter.terrainSurface
+ZIPLINESHOOTFILTERTRIGGER = ZIPLINESHOOTFILTER + sm.physics.filter.areaTrigger
+ZIPLINESHOOTFILTERTRIGGERCHARACTER = ZIPLINESHOOTFILTERTRIGGER + sm.physics.filter.character
 ZIPLINECLEARENCEFILTER = sm.physics.filter.terrainAsset + sm.physics.filter.terrainSurface
 
 
@@ -79,19 +81,15 @@ function GetPoleEnd(pole, dt)
     return pole:getInterpolatedWorldPosition() + pole.velocity * (dt or (1/60)) + pole:getInterpolatedUp() * 1.75
 end
 
-local function IsFluid(userData)
-    return userData.water or userData.chemical or userData.oil
-end
-
 ---@param ignore? AreaTrigger
 ---@return AreaTrigger?
 function DoZiplineInteractionRaycast(ignore)
     local start = sm.localPlayer.getRaycastStart()
-    local hit, result = sm.physics.raycast(start, start + sm.localPlayer.getDirection() * 5, ignore, ZIPLINESHOOTFILTER + sm.physics.filter.areaTrigger) --sm.physics.spherecast(start, start + sm.localPlayer.getDirection() * 5, 0.15, nil, 8)
+    local hit, result = sm.physics.raycast(start, start + sm.localPlayer.getDirection() * 5, ignore, ZIPLINESHOOTFILTERTRIGGER) --sm.physics.spherecast(start, start + sm.localPlayer.getDirection() * 5, 0.15, nil, 8)
 
     local trigger = result:getAreaTrigger()
-    local userData = trigger and trigger:getUserData() or {}
-    return (userData and not IsFluid(userData)) and trigger or nil
+    local userData = trigger and trigger:getUserData()
+    return (userData and userData.pole) and trigger or nil
 end
 
 function ColourLerp(c1, c2, t)
