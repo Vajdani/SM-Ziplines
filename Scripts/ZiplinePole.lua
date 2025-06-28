@@ -24,11 +24,11 @@ function Line:update( startPos, endPos )
     local pos = startPos + delta * 0.5
     local rot = sm.vec3.getRotation(vec3_up, delta)
 	self.effect:setPosition(pos)
-	self.effect:setScale(sm.vec3.new(self.thickness, self.thickness, length))
+	self.effect:setScale(vec3_new(self.thickness, self.thickness, length))
 	self.effect:setRotation(rot)
 
     self.trigger:setWorldPosition(pos)
-    self.trigger:setSize(sm.vec3.new(self.thickness, self.thickness, length * 0.5))
+    self.trigger:setSize(vec3_new(self.thickness, self.thickness, length * 0.5))
     self.trigger:setWorldRotation(rot)
 
     if not self.effect:isPlaying() then
@@ -99,7 +99,7 @@ function ZiplinePole:sv_checkIfCanConnect(pole, dt)
     local zipLine = targetPos - startPos
     local ziplineLength = zipLine:length()
     local zipDir = zipLine:normalize()
-    local zipDir_noZ = sm.vec3.new(zipDir.x, zipDir.y, 0):normalize()
+    local zipDir_noZ = vec3_new(zipDir.x, zipDir.y, 0):normalize()
     if ziplineLength > MAXZIPLINELENGTH or sm.physics.raycast(startPos, targetPos, nil, ZIPLINECLEARENCEFILTER) or not IsSmallerAngle(zipDir, MAXZIPLINEANGLE, zipDir_noZ) then
         return false, zipDir, zipDir_noZ, ziplineLength, startPos, targetPos
     end
@@ -130,7 +130,7 @@ function ZiplinePole:server_onFixedUpdate(dt)
         return
     end
 
-    local gravityAdjustment = sm.vec3.new(0, 0, -sm.physics.getGravity()) * dt
+    local gravityAdjustment = vec3_new(0, 0, -sm.physics.getGravity()) * dt
     for k, data in pairs(self.riders) do
         local worldPos, direction, moveDir, isReverse
         local char, shape = data.char, data.shape
@@ -213,7 +213,7 @@ function ZiplinePole:sv_freeRider(index, applyImpulse)
 
             if not char:isOnGround() and applyImpulse then
                 local vel = char.velocity
-                sm.physics.applyImpulse(char, sm.vec3.new(vel.x, vel.y, -vel.z) * char.mass)
+                sm.physics.applyImpulse(char, vec3_new(vel.x, vel.y, -vel.z) * char.mass)
             end
         end
 
@@ -343,7 +343,7 @@ local col_danger = sm.color.new("#ff0000")
 function ZiplinePole:client_canInteract()
     if self.cl_targetPole then
         local distance = (GetPoleEnd(self.shape) - GetPoleEnd(self.cl_targetPole)):length()
-        sm.gui.setInteractionText(text:format(ColourLerp(col_safe, col_danger, distance / MAXZIPLINELENGTH):getHexStr():sub(1, 6), distance))
+        gui_setInteractionText(text:format(ColourLerp(col_safe, col_danger, distance / MAXZIPLINELENGTH):getHexStr():sub(1, 6), distance))
     end
 
     return false
@@ -374,7 +374,7 @@ function ZiplinePole:client_onAction(action, state)
                 local result = CanInteract()
                 if type(result) == "Interactable" then
                     if result:hasSeat() then
-                        sm.localPlayer.getPlayer().character:setLockingInteractable(nil)
+                        lplayer_get().character:setLockingInteractable(nil)
                         self.network:sendToServer("sv_toggleAttachment")
                     end
                 elseif result then
@@ -402,6 +402,6 @@ end
 
 
 function ZiplinePole:isRidingZipline()
-    local char = sm.localPlayer.getPlayer().character
+    local char = lplayer_get().character
     return (char.clientPublicData or {}).isRidingZipline == true
 end

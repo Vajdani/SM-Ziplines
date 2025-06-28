@@ -1,7 +1,22 @@
-vec3_up      = sm.vec3.new(0,0,1)
-vec3_right   = sm.vec3.new(1,0,0)
-vec3_forward = sm.vec3.new(0,1,0)
+vec3_new     = sm.vec3.new
+vec3_right   = vec3_new(1,0,0)
+vec3_forward = vec3_new(0,1,0)
+vec3_up      = vec3_new(0,0,1)
 vec3_zero    = sm.vec3.zero()
+
+ico_forcebuild = sm.gui.getKeyBinding("ForceBuild", true)
+ico_jump = sm.gui.getKeyBinding("Jump", true)
+ico_use = sm.gui.getKeyBinding("Use", true)
+ico_fwd = sm.gui.getKeyBinding("Forward", true)
+
+gui_setInteractionText = sm.gui.setInteractionText
+
+lplayer_getDirection = sm.localPlayer.getDirection
+lplayer_getRayStart = sm.localPlayer.getRaycastStart
+lplayer_get = sm.localPlayer.getPlayer
+lplayer_getRay = sm.localPlayer.getRaycast
+
+util_clamp = sm.util.clamp
 
 MAXZIPLINELENGTH = 200 --50
 MAXZIPLINEANGLE = 75 --45 --30
@@ -26,7 +41,7 @@ ZIPLINECLEARENCEFILTER = sm.physics.filter.terrainAsset + sm.physics.filter.terr
 
 
 function CanInteract()
-    local hit, result = sm.localPlayer.getRaycast(ZIPLINEINTERACTIONRANGE)
+    local hit, result = lplayer_getRay(ZIPLINEINTERACTIONRANGE)
     if hit then
         local shape = result:getShape()
         if shape and shape.interactable and shape.usable or result:getHarvestable() or result:getLiftData() or result:getJoint() --[[or result:getCharacter()]] then
@@ -48,10 +63,10 @@ function CalculateZiplineProgress(A, B, C)
 
     local d = (C - B):normalize()
     local v = A - B
-    local t = sm.util.clamp(v:dot(d), 0, zipLength) --zipLength * ZIPLINEUPPERLINEFRACTIONLIMIT)
+    local t = util_clamp(v:dot(d), 0, zipLength) --zipLength * ZIPLINEUPPERLINEFRACTIONLIMIT)
     local P = B + d * t
 
-    return sm.util.clamp((P - B):length() / zipLength, 0, 1), zipDir:normalize(), P
+    return util_clamp((P - B):length() / zipLength, 0, 1), zipDir:normalize(), P
 end
 
 local boostAngle = 0.8
@@ -65,7 +80,7 @@ function CanPlayerBoost(zipDir, isReverse, playerDir)
 end
 
 function IsSmallerAngle(dir, angle, noZ)
-    local dirAngle = math.deg(math.acos((noZ or sm.vec3.new(dir.x, dir.y, 0):normalize()):dot(dir)))
+    local dirAngle = math.deg(math.acos((noZ or vec3_new(dir.x, dir.y, 0):normalize()):dot(dir)))
     dirAngle = dirAngle == dirAngle and dirAngle or 0 --NaN protection
     return dirAngle < angle, dirAngle
 end
@@ -84,7 +99,7 @@ end
 ---@param ignore? AreaTrigger
 ---@return AreaTrigger?
 function DoZiplineInteractionRaycast(ignore)
-    local start = sm.localPlayer.getRaycastStart()
+    local start = lplayer_getRayStart()
     local hit, result = sm.physics.raycast(start, start + sm.localPlayer.getDirection() * 5, ignore, ZIPLINESHOOTFILTERTRIGGER) --sm.physics.spherecast(start, start + sm.localPlayer.getDirection() * 5, 0.15, nil, 8)
 
     local trigger = result:getAreaTrigger()

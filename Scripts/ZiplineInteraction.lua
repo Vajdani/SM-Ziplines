@@ -4,12 +4,13 @@ dofile "$CONTENT_DATA/Scripts/util.lua"
 ZiplineInteraction = class()
 
 function ZiplineInteraction:server_onCreate()
+    if g_ziplineInteraction then return end
+
     g_ziplineInteraction = self.tool
 end
 
 function ZiplineInteraction:sv_setZiplineState(args)
-    self.network:sendToClient(args.player, "cl_setZiplineState", args.state)
-    self:sv_setZiplineData(args)
+    self.network:sendToClient(args.player, "cl_setZiplineState", args)
 end
 
 function ZiplineInteraction:sv_setZiplineData(args)
@@ -19,27 +20,34 @@ end
 
 
 function ZiplineInteraction:client_onCreate()
+    if g_cl_ziplineInteraction then
+        self.client_onUpdate = function() end
+        return
+    end
+
+    g_cl_ziplineInteraction = self.tool
+
     self.poleTrigger = nil
     self.lockingPole = nil
 end
 
 function ZiplineInteraction:client_onUpdate()
-    local char = sm.localPlayer.getPlayer().character
+    local char = lplayer_get().character
     if not sm.exists(char) or char:isTumbling() then return end
 
     local cPub = char.clientPublicData
     local isRidingZipline = cPub and cPub.isRidingZipline
     if isRidingZipline then
-        local interText = sm.gui.getKeyBinding("Jump", true).."Dismount\t"
+        local interText = ico_jump.."Dismount\t"
         if CanInteract() then
-            interText = interText..sm.gui.getKeyBinding("Use", true).."Reverse direction\t"
+            interText = interText..ico_use.."Reverse direction\t"
         end
 
-        if CanPlayerBoost(cPub.zipDir, cPub.isReverse, sm.localPlayer.getDirection()) and char.velocity:length2() > 1 then
-            interText = interText..sm.gui.getKeyBinding("Forward", true).."Slide"
+        if CanPlayerBoost(cPub.zipDir, cPub.isReverse, lplayer_getDirection()) and char.velocity:length2() > 1 then
+            interText = interText..ico_fwd.."Slide"
         end
 
-        sm.gui.setInteractionText(interText, "")
+        gui_setInteractionText(interText, "")
         --return
     end
 
@@ -48,7 +56,7 @@ function ZiplineInteraction:client_onUpdate()
 
     local pole = DoZiplineInteractionRaycast(isRidingZipline and self.poleTrigger)
     if pole then
-        sm.gui.setInteractionText("", sm.gui.getKeyBinding("Use", true), "Attach to zipline")
+        gui_setInteractionText("", ico_use, "Attach to zipline")
     end
 
     if isRidingZipline then return end
@@ -67,14 +75,16 @@ function ZiplineInteraction:client_onUpdate()
     end
 end
 
-function ZiplineInteraction:cl_setZiplineState(state)
-    local char = sm.localPlayer.getPlayer().character
+function ZiplineInteraction:cl_setZiplineState(args)
+    local char = lplayer_get().character
     char.clientPublicData = char.clientPublicData or {}
-    char.clientPublicData.isRidingZipline = state
+    char.clientPublicData.isRidingZipline = args.state
+
+    self:cl_setZiplineData(args.data)
 end
 
 function ZiplineInteraction:cl_setZiplineData(args)
-    local char = sm.localPlayer.getPlayer().character
+    local char = lplayer_get().character
     if args == nil then
         char.clientPublicData.zipDir = nil
         char.clientPublicData.isReverse = nil

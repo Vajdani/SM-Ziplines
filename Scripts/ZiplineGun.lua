@@ -317,13 +317,13 @@ function ZiplineGun:client_onUpdate( dt )
 	local normalTotalOffsetX = clamp( ( angle * 50.0 ), -45.0, 50.0 )
 	local totalOffsetX = lerp( normalTotalOffsetX, crouchTotalOffsetX , crouchWeight )
 	local finalJointWeight = ( self.jointWeight )
-	self.tool:updateJoint( "jnt_hips", sm.vec3.new( totalOffsetX, totalOffsetY, totalOffsetZ ), 0.35 * finalJointWeight * ( normalWeight ) )
+	self.tool:updateJoint( "jnt_hips", vec3_new( totalOffsetX, totalOffsetY, totalOffsetZ ), 0.35 * finalJointWeight * ( normalWeight ) )
 
 	local crouchSpineWeight = ( 0.35 / 3 ) * crouchWeight
-	self.tool:updateJoint( "jnt_spine1", sm.vec3.new( totalOffsetX, totalOffsetY, totalOffsetZ ), ( 0.10 + crouchSpineWeight )  * finalJointWeight )
-	self.tool:updateJoint( "jnt_spine2", sm.vec3.new( totalOffsetX, totalOffsetY, totalOffsetZ ), ( 0.10 + crouchSpineWeight ) * finalJointWeight )
-	self.tool:updateJoint( "jnt_spine3", sm.vec3.new( totalOffsetX, totalOffsetY, totalOffsetZ ), ( 0.45 + crouchSpineWeight ) * finalJointWeight )
-	self.tool:updateJoint( "jnt_head", sm.vec3.new( totalOffsetX, totalOffsetY, totalOffsetZ ), 0.3 * finalJointWeight )
+	self.tool:updateJoint( "jnt_spine1", vec3_new( totalOffsetX, totalOffsetY, totalOffsetZ ), ( 0.10 + crouchSpineWeight )  * finalJointWeight )
+	self.tool:updateJoint( "jnt_spine2", vec3_new( totalOffsetX, totalOffsetY, totalOffsetZ ), ( 0.10 + crouchSpineWeight ) * finalJointWeight )
+	self.tool:updateJoint( "jnt_spine3", vec3_new( totalOffsetX, totalOffsetY, totalOffsetZ ), ( 0.45 + crouchSpineWeight ) * finalJointWeight )
+	self.tool:updateJoint( "jnt_head", vec3_new( totalOffsetX, totalOffsetY, totalOffsetZ ), 0.3 * finalJointWeight )
 
 	local bobbing = 1
     local blend = 1 - math.pow( 1 - 1 / self.aimBlendSpeed, dt * 60 )
@@ -334,8 +334,8 @@ function ZiplineGun:client_onUpdate( dt )
 		self.aimWeight = sm.util.lerp( self.aimWeight, 0.0, blend )
 	end
 
-	self.tool:updateCamera( 2.8, 30.0, sm.vec3.new( 0.65, 0.0, 0.05 ), self.aimWeight )
-	self.tool:updateFpCamera( 30.0, sm.vec3.new( 0.0, 0.0, 0.0 ), self.aimWeight, bobbing )
+	self.tool:updateCamera( 2.8, 30.0, vec3_new( 0.65, 0.0, 0.05 ), self.aimWeight )
+	self.tool:updateFpCamera( 30.0, vec3_new( 0.0, 0.0, 0.0 ), self.aimWeight, bobbing )
 end
 
 function ZiplineGun:client_onEquip( animate )
@@ -433,9 +433,9 @@ local function GetPoleData(result)
 		local xAxis
 		if normal.x > 0 or normal.y > 0 or normal.z > 0 then
 			position = position + normal
-			xAxis = sm.vec3.new( normal.z, normal.x, normal.y )
+			xAxis = vec3_new( normal.z, normal.x, normal.y )
 		else
-			xAxis = sm.vec3.new( -normal.y, -normal.z, -normal.x )
+			xAxis = vec3_new( -normal.y, -normal.z, -normal.x )
 		end
 
 		pole = { position, normal, xAxis, shape.body }
@@ -522,7 +522,7 @@ function ZiplineGun:cl_onPrimaryUse( state )
         self.sprintCooldownTimer = self.sprintCooldown
 
         self:onShoot()
-        self.network:sendToServer( "sv_n_onShoot", { start = sm.localPlayer.getRaycastStart(), attachedPole = self.attachedPole, dir = sm.localPlayer.getDirection() } )
+        self.network:sendToServer( "sv_n_onShoot", { start = lplayer_getRayStart(), attachedPole = self.attachedPole, dir = sm.localPlayer.getDirection() } )
 
         setFpAnimation( self.fpAnimations, self.aiming and "aimShoot" or "shoot", 0.05 )
 
@@ -551,8 +551,8 @@ function ZiplineGun:client_onEquippedUpdate( primaryState, secondaryState, f )
         self.attachedPole = nil
     end
 
-	local rayStart, playerDir = sm.localPlayer.getRaycastStart(), sm.localPlayer.getDirection()
-    local hit, result = sm.physics.raycast(rayStart, rayStart + playerDir * MAXZIPLINELENGTH, sm.localPlayer.getPlayer().character, ZIPLINESHOOTFILTERTRIGGERCHARACTER)
+	local rayStart, playerDir = lplayer_getRayStart(), lplayer_getDirection()
+    local hit, result = sm.physics.raycast(rayStart, rayStart + playerDir * MAXZIPLINELENGTH, lplayer_get().character, ZIPLINESHOOTFILTERTRIGGERCHARACTER)
     local toPole = self.attachedPole and (result.pointWorld - GetPoleEnd(self.attachedPole))
     local distance = self.attachedPole and math.min(toPole:length(), MAXZIPLINELENGTH) or MAXZIPLINELENGTH * result.fraction
     local isInRange = distance < MAXZIPLINELENGTH
@@ -591,7 +591,7 @@ function ZiplineGun:client_onEquippedUpdate( primaryState, secondaryState, f )
 
     if not self.attachedPole then
         if shape and shape.uuid == ZIPLINEPOLE then
-            sm.gui.setInteractionText("", sm.gui.getKeyBinding("ForceBuild", true), "Attach rope to pole")
+            gui_setInteractionText("", ico_forcebuild, "Attach rope to pole")
             if f ~= self.prevF then
                 if f then
                     self.attachedPole = shape
@@ -603,7 +603,7 @@ function ZiplineGun:client_onEquippedUpdate( primaryState, secondaryState, f )
             end
         end
     else
-        sm.gui.setInteractionText("", sm.gui.getKeyBinding("ForceBuild", true), "Clear attached pole")
+        gui_setInteractionText("", ico_forcebuild, "Clear attached pole")
         if f ~= self.prevF then
             if f then
                 self.attachedPole = nil
@@ -616,96 +616,4 @@ function ZiplineGun:client_onEquippedUpdate( primaryState, secondaryState, f )
     end
 
 	return true, true
-end
-
-
-
-function ZiplineGun:calculateFirePosition()
-	local crouching = self.tool:isCrouching()
-	local firstPerson = self.tool:isInFirstPersonView()
-	local dir = sm.localPlayer.getDirection()
-	local pitch = math.asin( dir.z )
-	local right = sm.localPlayer.getRight()
-
-	local fireOffset = sm.vec3.new( 0.0, 0.0, 0.0 )
-
-	if crouching then
-		fireOffset.z = 0.15
-	else
-		fireOffset.z = 0.45
-	end
-
-	if firstPerson then
-		if not self.aiming then
-			fireOffset = fireOffset + right * 0.05
-		end
-	else
-		fireOffset = fireOffset + right * 0.25
-		fireOffset = fireOffset:rotate( math.rad( pitch ), right )
-	end
-	local firePosition = GetOwnerPosition( self.tool ) + fireOffset
-	return firePosition
-end
-
-function ZiplineGun:calculateTpMuzzlePos()
-	local crouching = self.tool:isCrouching()
-	local dir = sm.localPlayer.getDirection()
-	local pitch = math.asin( dir.z )
-	local right = sm.localPlayer.getRight()
-	local up = right:cross(dir)
-
-	local fakeOffset = sm.vec3.new( 0.0, 0.0, 0.0 )
-
-	--General offset
-	fakeOffset = fakeOffset + right * 0.25
-	fakeOffset = fakeOffset + dir * 0.5
-	fakeOffset = fakeOffset + up * 0.25
-
-	--Action offset
-	local pitchFraction = pitch / ( math.pi * 0.5 )
-	if crouching then
-		fakeOffset = fakeOffset + dir * 0.2
-		fakeOffset = fakeOffset + up * 0.1
-		fakeOffset = fakeOffset - right * 0.05
-
-		if pitchFraction > 0.0 then
-			fakeOffset = fakeOffset - up * 0.2 * pitchFraction
-		else
-			fakeOffset = fakeOffset + up * 0.1 * math.abs( pitchFraction )
-		end
-	else
-		fakeOffset = fakeOffset + up * 0.1 *  math.abs( pitchFraction )
-	end
-
-	local fakePosition = fakeOffset + GetOwnerPosition( self.tool )
-	return fakePosition
-end
-
-function ZiplineGun:calculateFpMuzzlePos()
-	local fovScale = ( sm.camera.getFov() - 45 ) / 45
-
-	local up = sm.localPlayer.getUp()
-	local dir = sm.localPlayer.getDirection()
-	local right = sm.localPlayer.getRight()
-
-	local muzzlePos45 = sm.vec3.new( 0.0, 0.0, 0.0 )
-	local muzzlePos90 = sm.vec3.new( 0.0, 0.0, 0.0 )
-
-	if self.aiming then
-		muzzlePos45 = muzzlePos45 - up * 0.2
-		muzzlePos45 = muzzlePos45 + dir * 0.5
-
-		muzzlePos90 = muzzlePos90 - up * 0.5
-		muzzlePos90 = muzzlePos90 - dir * 0.6
-	else
-		muzzlePos45 = muzzlePos45 - up * 0.15
-		muzzlePos45 = muzzlePos45 + right * 0.2
-		muzzlePos45 = muzzlePos45 + dir * 1.25
-
-		muzzlePos90 = muzzlePos90 - up * 0.15
-		muzzlePos90 = muzzlePos90 + right * 0.2
-		muzzlePos90 = muzzlePos90 + dir * 0.25
-	end
-
-	return self.tool:getFpBonePos( "pejnt_barrel" ) + sm.vec3.lerp( muzzlePos45, muzzlePos90, fovScale )
 end
