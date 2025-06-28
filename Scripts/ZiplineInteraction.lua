@@ -1,12 +1,27 @@
 dofile "$CONTENT_DATA/Scripts/util.lua"
 
+if not g_gravityStrength then
+    g_gravityStrength = 10
+end
+
 ---@class ZiplineInteraction : ToolClass
 ZiplineInteraction = class()
 
 function ZiplineInteraction:server_onCreate()
-    if g_ziplineInteraction then return end
+    if g_ziplineInteraction then
+        self.server_onFixedUpdate = function() end
+        return
+    end
 
     g_ziplineInteraction = self.tool
+end
+
+function ZiplineInteraction:server_onFixedUpdate()
+    local gravity = sm.physics.getGravity()
+    if g_gravityStrength ~= gravity then
+        g_gravityStrength = gravity
+        self.network:setClientData(g_gravityStrength)
+    end
 end
 
 function ZiplineInteraction:sv_setZiplineState(args)
@@ -73,6 +88,10 @@ function ZiplineInteraction:client_onUpdate()
 
         self.poleTrigger = pole
     end
+end
+
+function ZiplineInteraction:client_onClientDataUpdate(data, channel)
+    g_gravityStrength = data
 end
 
 function ZiplineInteraction:cl_setZiplineState(args)
