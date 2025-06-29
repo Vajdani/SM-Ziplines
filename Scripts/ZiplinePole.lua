@@ -368,7 +368,7 @@ end
 
 function ZiplinePole:UpdateRiders(zipDir, zipDir_noZ, startPos, targetPos, dt)
     local gravityAdjustment = vec3_new(0, 0, -g_gravityStrength * dt)
-    for k, data in pairs(self.sv_riders) do
+    for k, data in pairs(self.sv_riders or self.cl_riders) do
         local worldPos, direction, moveDir, isReverse
         local char, shape = data.char, data.shape
         if char then
