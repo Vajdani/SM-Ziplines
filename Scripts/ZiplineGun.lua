@@ -558,34 +558,38 @@ function ZiplineGun:client_onEquippedUpdate( primaryState, secondaryState, f )
     local isInRange = distance < MAXZIPLINELENGTH
 
     local shape = result:getShape()
-	if result.type ~= "terrainAsset" and result.type ~= "terrainSurface" and (not shape or shape.interactable) then
+	local invalid = false
+	if result.type ~= "terrainAsset" and result.type ~= "terrainSurface" and (not shape or not sm.item.isBlock(shape.uuid)) then
+		invalid = true
+	end
+
+	if invalid then
 		sm.gui.displayAlertText("#ff0000Invalid surface", 1)
-		return true, true
-	end
+	else
+		local dir = self.attachedPole and toPole:normalize() or playerDir
+		local isInAngleRange, angle = IsSmallerAngle(dir, MAXZIPLINEANGLE)
+		sm.gui.displayAlertText(
+			("%s%.0fm\n#ffffffAngle: %s%.0f"):format(
+				isInRange and "#ffffff" or "#ff0000",
+				distance,
+				isInAngleRange and "#00ff00" or "#ff0000",
+				angle * (dir.z < 0 and -1 or 1)
+			),
+			1
+		)
 
-    local dir = self.attachedPole and toPole:normalize() or playerDir
-    local isInAngleRange, angle = IsSmallerAngle(dir, MAXZIPLINEANGLE)
-    sm.gui.displayAlertText(
-        ("%s%.0fm\n#ffffffAngle: %s%.0f"):format(
-            isInRange and "#ffffff" or "#ff0000",
-            distance,
-            isInAngleRange and "#00ff00" or "#ff0000",
-            angle * (dir.z < 0 and -1 or 1)
-        ),
-        1
-    )
+		if primaryState ~= self.prevPrimaryState then
+			if hit and isInRange and isInAngleRange then
+				self:cl_onPrimaryUse( primaryState )
+			end
 
-    if primaryState ~= self.prevPrimaryState then
-		if hit and isInRange and isInAngleRange then
-            self:cl_onPrimaryUse( primaryState )
-        end
+			self.prevPrimaryState = primaryState
+		end
 
-		self.prevPrimaryState = primaryState
-	end
-
-	if secondaryState ~= self.prevSecondaryState then
-		self:cl_onSecondaryUse( secondaryState )
-		self.prevSecondaryState = secondaryState
+		if secondaryState ~= self.prevSecondaryState then
+			self:cl_onSecondaryUse( secondaryState )
+			self.prevSecondaryState = secondaryState
+		end
 	end
 
 
