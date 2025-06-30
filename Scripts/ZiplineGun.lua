@@ -546,25 +546,39 @@ function ZiplineGun:cl_onSecondaryUse( state )
     end
 end
 
+local function InvalidPoint(result)
+    local shape = result:getShape()
+	return result.type ~= "terrainAsset" and result.type ~= "terrainSurface" and (not shape or not sm.item.isBlock(shape.uuid))
+end
+
 function ZiplineGun:client_onEquippedUpdate( primaryState, secondaryState, f )
     if not sm.exists(self.attachedPole) then
         self.attachedPole = nil
     end
 
 	local rayStart, playerDir = lplayer_getRayStart(), lplayer_getDirection()
-    local hit, result = sm.physics.raycast(rayStart, rayStart + playerDir * MAXZIPLINELENGTH, lplayer_get().character, ZIPLINESHOOTFILTERTRIGGERCHARACTER)
+	local char = lplayer_get().character
+    local aimHit, result = sm.physics.raycast(rayStart, rayStart + playerDir * MAXZIPLINELENGTH, char, ZIPLINESHOOTFILTERTRIGGERCHARACTER)
     local toPole = self.attachedPole and (result.pointWorld - GetPoleEnd(self.attachedPole))
     local distance = self.attachedPole and math.min(toPole:length(), MAXZIPLINELENGTH) or MAXZIPLINELENGTH * result.fraction
     local isInRange = distance < MAXZIPLINELENGTH
 
     local shape = result:getShape()
-	local invalid = false
-	if result.type ~= "terrainAsset" and result.type ~= "terrainSurface" and (not shape or not sm.item.isBlock(shape.uuid)) then
-		invalid = true
+	local invalidAim = false
+	if InvalidPoint(result) then
+		invalidAim = true
 	end
 
-	if invalid then
-		sm.gui.displayAlertText("#ff0000Invalid surface", 1)
+    local hit, result = sm.physics.spherecast(char.worldPosition, char.worldPosition - char:getSurfaceNormal() * char:getHeight() * 0.55, 0.25, char, ZIPLINESHOOTFILTERTRIGGERCHARACTER)
+	local invalidGround = char:isSwimming() or char:isDiving()
+	if InvalidPoint(result) then
+		invalidGround = true
+	end
+
+	if invalidAim then
+		sm.gui.displayAlertText("#ff0000Invalid #ffffffaim#ff0000 surface", 1)
+	elseif invalidGround then
+		sm.gui.displayAlertText("#ff0000Invalid #ffffffground#ff0000 surface", 1)
 	else
 		local dir = self.attachedPole and toPole:normalize() or playerDir
 		local isInAngleRange, angle = IsSmallerAngle(dir, MAXZIPLINEANGLE)
@@ -579,7 +593,7 @@ function ZiplineGun:client_onEquippedUpdate( primaryState, secondaryState, f )
 		)
 
 		if primaryState ~= self.prevPrimaryState then
-			if hit and isInRange and isInAngleRange then
+			if aimHit and isInRange and isInAngleRange then
 				self:cl_onPrimaryUse( primaryState )
 			end
 
