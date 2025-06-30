@@ -5,13 +5,15 @@ ZiplineSlider.connectionOutput = sm.interactable.connectionType.none
 ZiplineSlider.maxParentCount = -1
 ZiplineSlider.maxChildCount = 0
 
-
+local attachRange = 5
 
 function ZiplineSlider:server_onCreate()
     self.targetPole = self.storage:load()
     if self.targetPole then
         sm.event.sendToInteractable(self.targetPole.interactable, "sv_attachSlider", self.shape)
     end
+
+    self.trigger = sm.areaTrigger.createAttachedBox(self.interactable, sm.vec3.one() * attachRange, sm.vec3.zero(), sm.quat.identity(), sm.areaTrigger.filter.areatrigger)
 end
 
 function ZiplineSlider:server_onFixedUpdate()
@@ -80,7 +82,7 @@ end
 function ZiplineSlider:findPole()
     local pole, minDistance = nil, math.huge
     local selfPos = self.shape.worldPosition
-    for k, v in pairs(self.shape.shapesInSphere(selfPos, 2.5)) do
+    for k, v in pairs(self.shape.shapesInSphere(selfPos, attachRange)) do
         if v.uuid == ZIPLINEPOLE  then
             local poleParent = (v.interactable.publicData or {}).poleParent
             if not poleParent then
@@ -94,6 +96,22 @@ function ZiplineSlider:findPole()
         end
 
         ::continue::
+    end
+
+    for k, v in ipairs(self.trigger:getContents()) do
+        if type(v) == "AreaTrigger" then
+            local userdata = v:getUserData()
+            if not userdata or not userdata.pole then
+                goto continue
+            end
+
+            local distance = (selfPos - v:getWorldPosition()):length2()
+            if distance < minDistance then
+                pole, minDistance = userdata.pole, distance
+            end
+
+            ::continue::
+        end
     end
 
     return pole
