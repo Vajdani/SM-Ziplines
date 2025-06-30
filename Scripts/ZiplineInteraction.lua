@@ -69,7 +69,7 @@ function ZiplineInteraction:client_onUpdate()
     local lock = char:getLockingInteractable()
     if lock and lock:hasSeat() then return end
 
-    local pole = DoZiplineInteractionRaycast(isRidingZipline and self.poleTrigger)
+    local pole = DoZiplineInteractionRaycast(isRidingZipline and self.poleTrigger or nil)
     if pole then
         gui_setInteractionText("", ico_use, "Attach to zipline")
     end

@@ -315,7 +315,7 @@ function ZiplinePole:client_onAction(action, state)
             local pole = DoZiplineInteractionRaycast(self.line.trigger)
             if pole then
                 self.network:sendToServer("sv_attachToOtherPole", pole:getUserData().pole.interactable)
-                return true
+                -- return true
             else
                 local result = CanInteract()
                 if type(result) == "Interactable" then
@@ -325,11 +325,12 @@ function ZiplinePole:client_onAction(action, state)
                     end
                 elseif result then
                     self.network:sendToServer("sv_toggleIsReverse")
-                    return true
+                    -- return true
                 end
             end
 
-            return false
+            -- return false
+            return true
         elseif action == 16 then
             self.network:sendToServer("sv_toggleAttachment")
         end
