@@ -1,7 +1,8 @@
 {
    "allow_add_mods" : true,
    "custom_icons" : false,
-   "description" : "This mod doesn't have a description",
+   "description" : "[h1]Introducing... Ziplines![/h1]\n\nThis mod adds ziplines that can be strung between two poles, making traversal easy!\n\n[h1]Features[/h1][list][*][b]Ziplines[/b][list][*]Mechanics can interact with the cable to mount onto them[*]Creations can use the [b]Zipline Rider[/b] block to mount onto them[/list][*][b]Zipline Rider:[/b] Accepts 3 button inputs to control it[/list]",
+   "fileId" : 3514826721,
    "localId" : "83c8117f-20bd-4e35-bb75-b8c69480871c",
    "name" : "Ziplines",
    "type" : "Blocks and Parts",
